@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
 
 interface Props {
-  params: { caseId: string };
+  params: Promise<{ caseId: string }>;
 }
 
-// Redirect /case/[caseId] → /case/[caseId]/documents
-export default function CasePage({ params }: Props) {
-  redirect(`/case/${params.caseId}/documents`);
+export default async function CasePage({ params }: Props) {
+  const { caseId } = await params;
+  redirect(`/case/${caseId}/documents`);
 }

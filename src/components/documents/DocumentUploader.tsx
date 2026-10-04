@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { FileText, ScanLine, Sparkles } from 'lucide-react';
 import { DocumentType, UploadedDocument } from '@/lib/types';
 import { extractOcrData } from '@/lib/ocr-extractor';
 import { validateDocument, DocumentValidation } from '@/lib/document-validator';
 import { useLanguage } from '@/hooks/useLanguage';
-import { t } from '@/lib/i18n';
-import { labels } from '@/lib/i18n';
+import { t, labels } from '@/lib/i18n';
 
 const DOCUMENT_TYPES: DocumentType[] = [
   'DEATH_CERTIFICATE',
@@ -24,13 +24,20 @@ const DOCUMENT_TYPES: DocumentType[] = [
   'NOMINEE_FORM',
 ];
 
+const DEMO_FIXTURES: { label: string; file: string; type: DocumentType }[] = [
+  { label: 'Death Certificate (Valid)', file: 'death_certificate_valid.png', type: 'DEATH_CERTIFICATE' },
+  { label: 'Random Laptop (Invalid)', file: 'laptop_random.png', type: 'DEATH_CERTIFICATE' },
+  { label: 'PAN Card (Valid)', file: 'pan_card_valid.png', type: 'PAN_CARD' },
+  { label: 'Share Certificate (Valid)', file: 'share_cert_valid.png', type: 'SHARE_CERTIFICATE' },
+];
+
 function generateDocId() {
   return `DOC-${Date.now().toString(36).toUpperCase()}`;
 }
 
 interface DocumentUploaderProps {
   onDocumentAdded: (doc: UploadedDocument) => void;
-  targetType?: DocumentType | null; // Optional pre-selected type from checklist replacement CTA
+  targetType?: DocumentType | null;
   onCancelTarget?: () => void;
 }
 
@@ -45,6 +52,12 @@ export default function DocumentUploader({
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   const [error, setError] = useState<string | null>(null);
   const [lastValidation, setLastValidation] = useState<{
     validation: DocumentValidation;
@@ -55,7 +68,6 @@ export default function DocumentUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync if targetType changes from parent
   if (targetType && selectedType !== targetType && !processing) {
     setSelectedType(targetType);
   }
@@ -67,8 +79,9 @@ export default function DocumentUploader({
     setProcessing(true);
     setError(null);
     setLastValidation(null);
-    setOcrProgress(5);
-    setProcessingStep(lang === 'hi' ? 'दस्तावेज़ की जांच हो रही है...' : 'Checking document...');
+    setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+    setOcrProgress(0);
+    setProcessingStep(lang === 'hi' ? 'दस्तावेज़ की जाँच हो रही है…' : 'Checking your document…');
 
     const baseDoc: UploadedDocument = {
       id: generateDocId(),
@@ -81,22 +94,18 @@ export default function DocumentUploader({
     };
 
     try {
-      setProcessingStep(lang === 'hi' ? 'टेक्स्ट निकाला जा रहा है (OCR)...' : 'Extracting text with OCR...');
+      setProcessingStep(lang === 'hi' ? 'टेक्स्ट पढ़ा जा रहा है…' : 'Reading the text…');
       const ocrData = await extractOcrData(file, (p) => {
         setOcrProgress(p);
-        if (p > 50) {
-          setProcessingStep(
-            lang === 'hi' ? 'प्रमाण संकेतों का विश्लेषण हो रहा है...' : 'Checking document type & evidence signals...'
-          );
-        }
+        setProcessingStep(lang === 'hi' ? 'टेक्स्ट पढ़ा जा रहा है…' : 'Reading the text…');
       });
 
-      setOcrProgress(92);
+      setOcrProgress(100);
       setProcessingStep(
-        lang === 'hi' ? 'आवश्यक जानकारी की पुष्टि हो रही है...' : 'Verifying required information...'
+        lang === 'hi' ? 'दस्तावेज़ के प्रकार की जाँच हो रही है…' : 'Checking whether this is the document you need…'
       );
 
-      // Deterministic validation step
+      // Deterministic validation step using actual rules
       const validation = validateDocument(type, ocrData);
 
       const finalDoc: UploadedDocument = {
@@ -113,6 +122,8 @@ export default function DocumentUploader({
         docType: type,
       });
 
+      setProcessingStep(lang === 'hi' ? 'मामले के अन्य दस्तावेज़ों से मिलान हो रहा है…' : 'Comparing with the other evidence in this case…');
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       onDocumentAdded(finalDoc);
 
       if (!validation.isValid && validation.status === 'INVALID') {
@@ -146,7 +157,7 @@ export default function DocumentUploader({
       setProcessing(false);
       setOcrProgress(0);
       setProcessingStep('');
-      // If was targeted replacement, notify parent
+      setPreviewUrl(null);
       if (onCancelTarget) onCancelTarget();
     }
   }, [onDocumentAdded, lang, onCancelTarget]);
@@ -168,6 +179,21 @@ export default function DocumentUploader({
     if (file) handleFile(file);
     e.target.value = '';
   }, [handleFile]);
+
+  const handleLoadFixture = async (fixtureFileName: string, targetTypeForFixture?: DocumentType) => {
+    const docType = targetTypeForFixture || selectedType || 'DEATH_CERTIFICATE';
+    setSelectedType(docType);
+    try {
+      const response = await fetch(`/fixtures/${fixtureFileName}`);
+      if (!response.ok) throw new Error('Failed to load demo fixture');
+      const blob = await response.blob();
+      const file = new File([blob], fixtureFileName, { type: 'image/png' });
+      processFile(file, docType);
+    } catch (err) {
+      console.error(err);
+      setError('Could not load test fixture file.');
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -200,11 +226,12 @@ export default function DocumentUploader({
                 font: 'inherit',
                 width: '100%',
                 border: selectedType === type ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                background: selectedType === type ? 'rgba(28,79,161,0.06)' : 'var(--color-surface)',
+                background: selectedType === type ? 'rgba(92, 10, 26, 0.08)' : 'var(--color-surface)',
                 borderRadius: '8px',
                 padding: '10px 14px',
                 cursor: 'pointer',
               }}
+              id={`select-doc-type-${type.toLowerCase()}`}
             >
               <span style={{ fontSize: '13px', fontWeight: 600, color: selectedType === type ? 'var(--color-primary)' : 'var(--color-text)' }}>
                 {docTypeLabel(type)}
@@ -222,29 +249,50 @@ export default function DocumentUploader({
           </p>
 
           {processing ? (
-            <div style={{
-              border: '2px solid var(--color-primary-light)',
-              borderRadius: '12px',
-              padding: '36px 24px',
-              textAlign: 'center',
-              background: 'rgba(37,99,235,0.04)',
-            }}>
-              <div style={{ marginBottom: '12px' }}>
-                <svg className="animate-spin" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }} aria-hidden="true">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '16px', marginBottom: '6px' }}>
-                  {processingStep || t('scanningDocument', lang)}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '14px' }}>
-                  {lang === 'hi' ? 'दस्तावेज़ की प्रामाणिकता और संकेतों की जांच हो रही है...' : 'Verifying document authenticity & text signals...'}
-                </p>
-                <div className="progress-track" style={{ maxWidth: 340, margin: '0 auto' }}>
+            <div className="ocr-processing" role="status" aria-live="polite">
+              <div className="ocr-scan-preview">
+                {previewUrl ? (
+                  <img src={previewUrl} alt={lang === 'hi' ? 'अपलोड किया गया दस्तावेज़' : 'Uploaded document'} />
+                ) : (
+                  <div className="ocr-file-preview">
+                    <FileText aria-hidden="true" />
+                    <span>{lang === 'hi' ? 'दस्तावेज़' : 'Document'}</span>
+                  </div>
+                )}
+                <span className="ocr-scan-frame" aria-hidden="true" />
+                <span className="ocr-scan-beam" aria-hidden="true" />
+                <span className="ocr-scan-badge">
+                  <ScanLine aria-hidden="true" />
+                  {lang === 'hi' ? 'पढ़ा जा रहा है' : 'Reading'}
+                </span>
+              </div>
+              <div className="ocr-processing-copy">
+                <p className="ocr-processing-eyebrow">{lang === 'hi' ? 'दस्तावेज़ जाँच' : 'DOCUMENT CHECK'}</p>
+                <h3>{processingStep || t('scanningDocument', lang)}</h3>
+                <p>{lang === 'hi' ? 'टेक्स्ट आपके ब्राउज़र में पढ़ा जा रहा है। यह जाँच दस्तावेज़ की प्रामाणिकता प्रमाणित नहीं करती।' : 'Text is being read in your browser. This check does not prove a document is authentic.'}</p>
+                <div className="ocr-progress-label">
+                  <span>{lang === 'hi' ? 'टेक्स्ट पढ़ने की प्रगति' : 'Text reading progress'}</span>
+                  <span>{ocrProgress}%</span>
+                </div>
+                <div
+                  className="progress-track ocr-progress-track"
+                  role="progressbar"
+                  aria-label={lang === 'hi' ? 'टेक्स्ट पढ़ने की प्रगति' : 'Text reading progress'}
+                  aria-valuenow={ocrProgress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
                   <div className="progress-fill" style={{ width: `${ocrProgress}%` }} />
                 </div>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', fontWeight: 600 }}>
-                  {ocrProgress}%
-                </p>
+                <div className="ocr-stage-list" aria-hidden="true">
+                  <span className={ocrProgress === 100 ? 'is-complete' : 'is-current'}>
+                    {lang === 'hi' ? 'टेक्स्ट पढ़ें' : 'Read text'}
+                  </span>
+                  <span className={ocrProgress === 100 ? 'is-current' : ''}>
+                    {lang === 'hi' ? 'दस्तावेज़ प्रकार जाँचें' : 'Check document type'}
+                  </span>
+                  <span>{lang === 'hi' ? 'अन्य प्रमाण से मिलाएँ' : 'Compare case evidence'}</span>
+                </div>
               </div>
             </div>
           ) : (
@@ -257,7 +305,12 @@ export default function DocumentUploader({
               role="button"
               tabIndex={0}
               aria-label={`Upload ${docTypeLabel(selectedType)}`}
-              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
               style={{
                 border: '2px dashed var(--color-primary-light)',
                 borderRadius: '12px',
@@ -266,9 +319,10 @@ export default function DocumentUploader({
                 background: 'var(--color-surface)',
                 cursor: 'pointer',
               }}
+              id="upload-dropzone"
             >
               <div style={{ marginBottom: '12px' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-light)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }} aria-hidden="true">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }} aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="17 8 12 3 7 8"/>
                   <line x1="12" y1="3" x2="12" y2="15"/>
@@ -310,6 +364,40 @@ export default function DocumentUploader({
                   </svg>
                   {lang === 'hi' ? 'फ़ाइल चुनें' : 'Choose from Device'}
                 </button>
+              </div>
+
+              {/* Quick Demo Test Fixtures Bar */}
+              <div
+                style={{
+                  marginTop: '20px',
+                  paddingTop: '16px',
+                  borderTop: '1px solid var(--color-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Sparkles size={14} />
+                  {lang === 'hi' ? 'त्वरित डेमो परीक्षण फ़ाइलें:' : 'Quick Demo Test Samples (Runs Real OCR):'}
+                </span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {DEMO_FIXTURES.map((fix) => (
+                    <button
+                      key={fix.file}
+                      type="button"
+                      onClick={() => handleLoadFixture(fix.file, fix.type)}
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '12px', padding: '4px 10px', height: '34px', minHeight: '34px', background: 'var(--color-muted)' }}
+                      id={`demo-fixture-${fix.file.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                      title={`Run real OCR on ${fix.file}`}
+                    >
+                      {fix.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -364,8 +452,8 @@ export default function DocumentUploader({
               {lastValidation.validation.status === 'VALID'
                 ? '✓'
                 : lastValidation.validation.status === 'NEEDS_REVIEW'
-                ? '⚠️'
-                : '❌'}
+                ? '!'
+                : '×'}
             </div>
             <div style={{ flex: 1 }}>
               <p style={{
@@ -380,22 +468,31 @@ export default function DocumentUploader({
                 margin: '0 0 4px',
               }}>
                 {lastValidation.validation.status === 'VALID'
-                  ? (lang === 'hi' ? `${docTypeLabel(lastValidation.docType)} मान्य प्रतीत होता है` : `${docTypeLabel(lastValidation.docType)} verified with evidence`)
+                  ? (lang === 'hi' ? `${docTypeLabel(lastValidation.docType)} के प्रकार की जाँच सफल` : `${docTypeLabel(lastValidation.docType)} document type check passed`)
                   : lastValidation.validation.status === 'NEEDS_REVIEW'
                   ? (lang === 'hi' ? 'दस्तावेज़ की समीक्षा आवश्यक है' : 'Document needs review')
                   : (lang === 'hi' ? `यह ${docTypeLabel(lastValidation.docType)} प्रतीत नहीं होता` : `This does not appear to be a ${docTypeLabel(lastValidation.docType)}`)}
               </p>
-              <p style={{ fontSize: '13px', color: 'var(--color-text)', margin: '0 0 6px', lineHeight: 1.4 }}>
-                {lang === 'hi' ? lastValidation.validation.reasonHi : lastValidation.validation.reason}
+              <p style={{ fontSize: '14px', color: 'var(--color-text)', margin: '0 0 6px', lineHeight: 1.5 }}>
+                {lastValidation.validation.status === 'VALID'
+                  ? (lang === 'hi' ? 'निकाले गए टेक्स्ट में इस दस्तावेज़ प्रकार से मेल खाने वाले संकेत मिले। यह प्रामाणिकता सिद्ध नहीं करता।' : 'The extracted text contains signals matching this document type. This does not prove authenticity.')
+                  : (lang === 'hi' ? lastValidation.validation.reasonHi : lastValidation.validation.reason)}
               </p>
 
               {lastValidation.validation.matchedSignals.length > 0 && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                  {lastValidation.validation.matchedSignals.map((sig) => (
-                    <span key={sig} style={{ fontSize: '11px', background: 'rgba(22,163,74,0.15)', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                      ✓ {sig}
-                    </span>
-                  ))}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: lastValidation.validation.isValid ? '#15803D' : '#92400E', marginBottom: '4px' }}>
+                    {lastValidation.validation.isValid
+                      ? (lang === 'hi' ? 'पहचाने गए मजबूत दस्तावेज़ संकेत:' : 'Strong document signals detected:')
+                      : (lang === 'hi' ? 'पहचाने गए संकेत:' : 'Document signals detected:')}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {lastValidation.validation.matchedSignals.map((sig) => (
+                      <span key={sig} style={{ fontSize: '11px', background: 'rgba(22,163,74,0.15)', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        • {sig}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -410,7 +507,7 @@ export default function DocumentUploader({
                     style={{ gap: '6px', fontWeight: 700 }}
                     id="replace-doc-immediate-btn"
                   >
-                    🔄 {lang === 'hi' ? 'दस्तावेज़ बदलें (स्पष्ट प्रति अपलोड करें)' : 'Replace Document (Upload Clear Photo)'}
+                    {lang === 'hi' ? 'दस्तावेज़ बदलें (स्पष्ट प्रति अपलोड करें)' : 'Replace document with a clearer copy'}
                   </button>
                 </div>
               )}

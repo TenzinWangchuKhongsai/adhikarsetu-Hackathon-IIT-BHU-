@@ -1,5 +1,6 @@
 'use client';
 
+import { FileUp, Lightbulb, TriangleAlert } from 'lucide-react';
 import { ChecklistItem as ChecklistItemType } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -30,9 +31,9 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
       textHi: '✓ दस्तावेज़ प्रकार सही',
     },
     USER_CONFIRMED: {
-      bg: '#E0E7FF',
-      color: '#3730A3',
-      border: '#C7D2FE',
+      bg: '#f2e9e5',
+      color: '#604b45',
+      border: '#d9c9c2',
       textEn: 'USER CONFIRMED — NO DOCUMENT PROOF',
       textHi: 'उपयोगकर्ता द्वारा पुष्टीकृत — कोई दस्तावेज़ प्रमाण नहीं',
     },
@@ -40,8 +41,8 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
       bg: '#FEF3C7',
       color: '#B45309',
       border: '#FDE68A',
-      textEn: '⚠️ NEEDS REVIEW',
-      textHi: '⚠️ समीक्षा आवश्यक',
+      textEn: 'NEEDS REVIEW',
+      textHi: 'समीक्षा आवश्यक',
     },
     INVALID: {
       bg: '#FEE2E2',
@@ -89,14 +90,14 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
         aria-label={`${item.completed ? 'Mark incomplete' : 'Mark complete'}: ${label}`}
         style={{
           flexShrink: 0,
-          width: 30,
-          height: 30,
-          borderRadius: 8,
+          width: 48,
+          height: 48,
+          borderRadius: 12,
           border: `2.5px solid ${
             isVerified
               ? 'var(--color-success)'
               : isUserConfirmed
-              ? '#4F46E5'
+              ? 'var(--color-accent)'
               : isInvalid
               ? 'var(--color-danger)'
               : 'var(--color-border)'
@@ -104,7 +105,7 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
           background: isVerified
             ? 'var(--color-success)'
             : isUserConfirmed
-            ? '#4F46E5'
+            ? 'var(--color-accent)'
             : 'transparent',
           cursor: 'pointer',
           display: 'flex',
@@ -115,8 +116,18 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
         }}
       >
         {isVerified && (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12"/>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
         {isUserConfirmed && !isVerified && (
@@ -127,50 +138,59 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-          <span style={{
-            fontWeight: 700,
-            fontSize: '15px',
-            color: isVerified ? 'var(--color-success)' : 'var(--color-text)',
-            textDecoration: isVerified ? 'line-through' : 'none',
-            opacity: isVerified ? 0.85 : 1,
-          }}>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: '15px',
+              color: isVerified ? 'var(--color-success)' : 'var(--color-text)',
+              textDecoration: isVerified ? 'line-through' : 'none',
+              opacity: isVerified ? 0.85 : 1,
+            }}
+          >
             {label}
           </span>
 
           {/* Truthful Evidence Status Badge */}
-          <span style={{
-            fontSize: '10px',
-            fontWeight: 800,
-            padding: '3px 8px',
-            borderRadius: '4px',
-            letterSpacing: '0.04em',
-            background: badgeConfig.bg,
-            color: badgeConfig.color,
-            border: `1px solid ${badgeConfig.border}`,
-          }}>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 800,
+              padding: '3px 8px',
+              borderRadius: '4px',
+              letterSpacing: '0.04em',
+              background: badgeConfig.bg,
+              color: badgeConfig.color,
+              border: `1px solid ${badgeConfig.border}`,
+            }}
+          >
             {lang === 'hi' ? badgeConfig.textHi : badgeConfig.textEn}
           </span>
         </div>
 
-        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0 0 6px', lineHeight: 1.4 }}>
+        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: '0 0 6px', lineHeight: 1.55 }}>
           {description}
         </p>
 
         {/* Clear Truthful Explanations */}
         {isInvalid && (
-          <div style={{
-            padding: '8px 12px',
-            background: '#FEE2E2',
-            borderRadius: '6px',
-            marginTop: '6px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '8px',
-            flexWrap: 'wrap',
-          }}>
+          <div
+            style={{
+              padding: '8px 12px',
+              background: '#FEE2E2',
+              borderRadius: '6px',
+              marginTop: '6px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+            }}
+          >
             <p style={{ fontSize: '12px', color: '#991B1B', fontWeight: 600, margin: 0 }}>
-              ❌ {lang === 'hi' ? 'अपलोड की गई फ़ाइल अमान्य है। प्रमाण सत्यापित नहीं हुआ।' : 'Uploaded file was rejected. Checkmark does not verify without an authentic certificate.'}
+              <TriangleAlert aria-hidden="true" />{' '}
+              {lang === 'hi'
+                ? 'यह दस्तावेज़ आवश्यक प्रकार का नहीं लगता। इसे प्रमाण के रूप में नहीं गिना गया है।'
+                : 'This doesn’t appear to be the document you need. It has not been counted as evidence.'}
             </p>
             {onUploadClick && (
               <button
@@ -178,21 +198,23 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
                 className="btn btn-danger btn-sm"
                 style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
               >
-                🔄 {lang === 'hi' ? 'दस्तावेज़ बदलें' : 'Replace Document'}
+                <FileUp aria-hidden="true" /> {lang === 'hi' ? 'दस्तावेज़ बदलें' : 'Replace document'}
               </button>
             )}
           </div>
         )}
 
         {isUserConfirmed && (
-          <div style={{
-            padding: '6px 10px',
-            background: 'rgba(79, 70, 229, 0.08)',
-            borderRadius: '6px',
-            marginTop: '6px',
-          }}>
-            <p style={{ fontSize: '11px', color: '#4338CA', fontWeight: 600, margin: 0 }}>
-              ℹ️ {lang === 'hi'
+          <div
+            style={{
+              padding: '6px 10px',
+              background: '#f7eeea',
+              borderRadius: '6px',
+              marginTop: '6px',
+            }}
+          >
+            <p style={{ fontSize: '14px', color: '#604b45', fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+              {lang === 'hi'
                 ? 'यह चेकबॉक्स आपकी दी गई जानकारी दर्ज करता है। यह दस्तावेज़ प्रमाण नहीं है।'
                 : 'This checkbox records what you told us. It is not document evidence.'}
             </p>
@@ -200,15 +222,17 @@ export default function ChecklistItemCard({ item, onToggle, onUploadClick }: Che
         )}
 
         {helpText && !isVerified && (
-          <div style={{
-            marginTop: '8px',
-            padding: '8px 12px',
-            background: 'rgba(37,99,235,0.06)',
-            borderRadius: '6px',
-            borderLeft: '3px solid var(--color-primary-light)',
-          }}>
-            <p style={{ fontSize: '12px', color: 'var(--color-primary)', margin: 0, lineHeight: 1.4 }}>
-              💡 {helpText}
+          <div
+            style={{
+              marginTop: '8px',
+              padding: '8px 12px',
+              background: '#f7eeea',
+              borderRadius: '6px',
+              borderLeft: '3px solid var(--color-accent)',
+            }}
+          >
+            <p style={{ fontSize: '14px', color: 'var(--color-primary)', margin: 0, lineHeight: 1.5 }}>
+              <Lightbulb aria-hidden="true" /> {helpText}
             </p>
           </div>
         )}

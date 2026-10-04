@@ -22,8 +22,13 @@ export interface DocumentValidation {
   userConfirmed?: boolean;
 }
 
-interface SignalRule {
-  term: string | RegExp;
+export type SignalMatcher =
+  | string
+  | RegExp
+  | ((normText: string, compactText: string, rawText: string) => boolean);
+
+export interface SignalRule {
+  term: SignalMatcher;
   label: string;
   weight: number;
 }
@@ -48,29 +53,186 @@ const VALIDATION_CONFIGS: Record<DocumentType, DocValidationConfig> = {
     docType: 'DEATH_CERTIFICATE',
     titleEn: 'Death Certificate',
     titleHi: 'मृत्यु प्रमाण पत्र',
-    minOcrChars: 18,
-    minValidScore: 45,
-    minReviewScore: 22,
+    minOcrChars: 15,
+    minValidScore: 40,
+    minReviewScore: 25,
     strongSignals: [
-      { term: /death\s*cert/i, label: 'Death Certificate title', weight: 35 },
-      { term: /cert(?:ificate)?\s*of\s*death/i, label: 'Certificate of Death', weight: 35 },
-      { term: /मृत्यु\s*प्रमाण\s*पत्र/i, label: 'Hindi Death Certificate title', weight: 35 },
-      { term: /date\s*of\s*death/i, label: 'Date of Death', weight: 25 },
-      { term: /date\s*of\s*demise/i, label: 'Date of Demise', weight: 25 },
-      { term: /मृत्यु\s*तिथि/i, label: 'Date of Death (Hindi)', weight: 25 },
-      { term: /(?:deceased|name\s*of\s*(?:the\s*)?deceased|मृतक)/i, label: 'Deceased name header', weight: 25 },
-      { term: /(?:registration|reg(?:n)?)\s*(?:no|number|#|\.)/i, label: 'Registration Number', weight: 25 },
-      { term: /registrar\s*(?:of\s*)?(?:birth(?:s)?\s*(?:and|&)\s*death(?:s)?)?/i, label: 'Registrar Authority', weight: 25 },
+      {
+        term: (n, c) =>
+          /\bdeath\s*cert(?:ificate|ifict|ificat|if)?\b/i.test(n) ||
+          c.includes('deathcertificate') ||
+          c.includes('deathcert') ||
+          /मृत्यु\s*प्रमाण\s*पत्र/i.test(n) ||
+          c.includes('मृत्युप्रमाणपत्र'),
+        label: 'Death Certificate',
+        weight: 25,
+      },
+      {
+        term: (n, c) =>
+          /\bcert(?:ificate)?\s*(?:of)?\s*death\b/i.test(n) ||
+          c.includes('certificateofdeath') ||
+          c.includes('certofdeath') ||
+          /record\s*(?:of)?\s*death\b/i.test(n) ||
+          c.includes('recordofdeath'),
+        label: 'Certificate of Death',
+        weight: 25,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:date|dt)\s*(?:of)?\s*(?:death|demise)\b/i.test(n) ||
+          c.includes('dateofdeath') ||
+          c.includes('dateofdemise') ||
+          /मृत्यु\s*(?:की\s*)?(?:तिथि|दिनांक)/i.test(n) ||
+          c.includes('मृत्युतिथि') ||
+          c.includes('मृत्युदिनांक'),
+        label: 'Date of Death',
+        weight: 20,
+      },
+      {
+        term: (n, c) =>
+          /\breg(?:istration|istn)?\s*(?:of)?\s*death\b/i.test(n) ||
+          c.includes('registrationofdeath') ||
+          /\bdeath\s*reg(?:istration|istn)?\b/i.test(n) ||
+          /\bdeath\s*act\b/i.test(n) ||
+          /\bdeath\s*rule\b/i.test(n) ||
+          c.includes('deathregistration') ||
+          c.includes('deathact'),
+        label: 'Registration of Death',
+        weight: 20,
+      },
+      {
+        term: (n, c) =>
+          /\breg(?:istration|istn|n)?\.?\s*(?:no|number|num|#)\b/i.test(n) ||
+          c.includes('registrationno') ||
+          c.includes('registrationnumber') ||
+          c.includes('regno') ||
+          c.includes('regnumber') ||
+          /पंजीकरण\s*(?:संख्या|नं)/i.test(n) ||
+          c.includes('पंजीकरणसंख्या') ||
+          /\bmcdour\b/i.test(n),
+        label: 'Registration Number',
+        weight: 20,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:date|dt)\s*(?:of)?\s*reg(?:istration|istn|n)?\b/i.test(n) ||
+          c.includes('dateofregistration') ||
+          c.includes('dateofreg') ||
+          /पंजीकरण\s*(?:की\s*)?(?:तिथि|दिनांक)/i.test(n) ||
+          c.includes('पंजीकरणतिथि'),
+        label: 'Date of Registration',
+        weight: 15,
+      },
+      {
+        term: (n, c) =>
+          /\bform\s*(?:no\.?|na\.?|number|num)?\s*6\b/i.test(n) ||
+          c.includes('formno6') ||
+          c.includes('formna6') ||
+          c.includes('form6') ||
+          /फॉर्म\s*(?:नं\.?|संख्या)?\s*6\b/i.test(n),
+        label: 'Form No. 6',
+        weight: 15,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:sub[\s-]*)?registrar\b/i.test(n) ||
+          c.includes('registrar') ||
+          c.includes('subregistrar') ||
+          /पंजीयक/i.test(n),
+        label: 'Registrar Authority',
+        weight: 15,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:municipal|munkipal)\s*(?:corp(?:oration)?|counci[l1])\b/i.test(n) ||
+          c.includes('municipalcorporation') ||
+          c.includes('munkipalcorporation') ||
+          /\bnorth\s*deli\b/i.test(n) ||
+          /\bnagar\s*(?:nigam|palika)\b/i.test(n) ||
+          /\bgram\s*panchayat\b/i.test(n) ||
+          /\bmcd\b/i.test(n) ||
+          /\bndmc\b/i.test(n) ||
+          c.includes('mcdonline'),
+        label: 'Municipal Corporation',
+        weight: 15,
+      },
+      {
+        term: (n, c) =>
+          /\bbirth(?:s)?\s*(?:and|&)\s*death(?:s)?\b/i.test(n) ||
+          c.includes('birthanddeath') ||
+          c.includes('birthsanddeaths') ||
+          c.includes('birthdeath') ||
+          /जन्म\s*(?:और|एवं)\s*मृत्यु/i.test(n),
+        label: 'Births and Deaths',
+        weight: 15,
+      },
     ],
     supportingSignals: [
-      { term: /birth(?:s)?\s*(?:and|&)\s*death(?:s)?/i, label: 'Births & Deaths registry', weight: 15 },
-      { term: /vital\s*statistics/i, label: 'Vital Statistics', weight: 15 },
-      { term: /(?:municipal\s*corporation|municipality|nagar\s*(?:nigam|palika)|gram\s*panchayat)/i, label: 'Municipal / Local Authority', weight: 15 },
-      { term: /form\s*(?:no\.?)?\s*6/i, label: 'Form 6 (Death Report)', weight: 15 },
-      { term: /place\s*of\s*death/i, label: 'Place of Death', weight: 15 },
-      { term: /cause\s*of\s*death/i, label: 'Cause of Death', weight: 10 },
-      { term: /date\s*of\s*registration/i, label: 'Date of Registration', weight: 12 },
-      { term: /(?:male|female|age\s*:\s*\d+)/i, label: 'Demographic indicators (Age/Sex)', weight: 10 },
+      {
+        term: (n, c) =>
+          /\b(?:name\s*(?:of)?\s*)?father\s*(?:\/|\s*(?:and|or)\s*)\s*husband\b/i.test(n) ||
+          c.includes('fatherhusband') ||
+          c.includes('nameoffatherhusband') ||
+          /\bfather(?:'s)?\s*name\b/i.test(n) ||
+          /पिता\s*(?:\/|या)\s*पति/i.test(n),
+        label: 'Name of Father/Husband',
+        weight: 10,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:name\s*(?:of)?\s*)?mother(?:'s)?(?:\s*name)?\b/i.test(n) ||
+          c.includes('nameofmother') ||
+          c.includes('mothername') ||
+          /माता\s*(?:का\s*नाम)?/i.test(n),
+        label: 'Name of Mother',
+        weight: 8,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:name\s*(?:of)?\s*)?spouse\b/i.test(n) ||
+          c.includes('nameofspouse') ||
+          c.includes('spousename') ||
+          /पति\s*\/\s*पत्नी/i.test(n),
+        label: 'Name of Spouse',
+        weight: 8,
+      },
+      {
+        term: (n, c) =>
+          /\bplace\s*(?:of)?\s*death\b/i.test(n) ||
+          c.includes('placeofdeath') ||
+          /मृत्यु\s*(?:का\s*)?स्थान/i.test(n),
+        label: 'Place of Death',
+        weight: 10,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:permanent|present)\s*address\b/i.test(n) ||
+          c.includes('permanentaddress') ||
+          c.includes('presentaddress') ||
+          /स्थायी\s*पता/i.test(n),
+        label: 'Permanent Address',
+        weight: 8,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:issued\s*under\s*(?:section\s*\d+\s*of\s*(?:the\s*)?)?)?registration\s*of\s*(?:births?\s*(?:and|&)\s*)?deaths?\s*act\b/i.test(n) ||
+          /\bact\s*,?\s*1969\b/i.test(n) ||
+          c.includes('act1969') ||
+          c.includes('registrationofdeathact'),
+        label: 'Issued under Registration Act',
+        weight: 10,
+      },
+      {
+        term: (n, c) =>
+          /\b(?:govt|government)\s*(?:of)?\s*(?:national\s*capital\s*territory|nct|delhi|india)\b/i.test(n) ||
+          /\bnational\s*capital\s*territory\b/i.test(n) ||
+          /\bnct\s*(?:of)?\s*delhi\b/i.test(n) ||
+          /\bnct\.?\s*dein\b/i.test(n) ||
+          c.includes('nationalcapitalterritory') ||
+          c.includes('govtofnationalcapitalterritory'),
+        label: 'Government Authority',
+        weight: 10,
+      },
     ],
     contradictorySignals: [
       { term: /income\s*tax\s*department/i, label: 'Income Tax Department (PAN indicator)', weight: 45 },
@@ -91,7 +253,7 @@ const VALIDATION_CONFIGS: Record<DocumentType, DocValidationConfig> = {
     minReviewScore: 25,
     requiredPatterns: [
       {
-        regex: /[A-Z]{5}[0-9]{4}[A-Z]/,
+        regex: /\b[A-Z](?:\s*[A-Z]){4}\s*[\dIO](?:\s*[\dIO]){2,4}\s*[A-Z]\b/i,
         label: 'Valid PAN Format (AAABB1234C)',
         failReason: 'No valid 10-character PAN number (5 letters, 4 digits, 1 letter) was detected.',
         failReasonHi: 'दस्तावेज़ में कोई वैध 10-अक्षरीय पैन नंबर नहीं मिला।',
@@ -394,6 +556,45 @@ const VALIDATION_CONFIGS: Record<DocumentType, DocValidationConfig> = {
 // ─── Main Validator Engine ───────────────────────────────────────────────────
 
 /**
+ * Normalizes raw OCR text before matching:
+ * - lowercase
+ * - normalize whitespace & line breaks to single spaces
+ * - normalize punctuation and common OCR variation symbols (dashes, quotes, delimiters)
+ * - creates a compact representation stripped of spaces/punctuation to handle merged or split OCR tokens
+ */
+export function normalizeOcrText(text: string): { norm: string; compact: string; raw: string } {
+  const raw = text || '';
+  const norm = raw
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212_]/g, '-')
+    .replace(/[\u2018\u2019`]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const compact = norm.replace(/[^a-z0-9\u0900-\u097F]/g, '');
+  return { norm, compact, raw };
+}
+
+function isSignalMatched(
+  signal: SignalRule,
+  normText: string,
+  compactText: string,
+  rawText: string
+): boolean {
+  if (typeof signal.term === 'function') {
+    return signal.term(normText, compactText, rawText);
+  }
+  if (typeof signal.term === 'string') {
+    const lower = signal.term.toLowerCase();
+    return normText.includes(lower) || rawText.toLowerCase().includes(lower);
+  }
+  return signal.term.test(normText) || signal.term.test(rawText);
+}
+
+/**
  * Deterministically validates an uploaded document using OCR extracted text and fields.
  * NEVER relies on LLMs.
  * Returns explicit status: NOT_UPLOADED | INVALID | NEEDS_REVIEW | VALID
@@ -437,10 +638,12 @@ export function validateDocument(
     };
   }
 
+  const { norm: normText, compact: compactText } = normalizeOcrText(rawText);
+
   // 2. Check required patterns (e.g. valid PAN pattern on PAN card)
   if (config.requiredPatterns) {
     for (const req of config.requiredPatterns) {
-      if (!req.regex.test(rawText)) {
+      if (!req.regex.test(rawText) && !req.regex.test(normText)) {
         return {
           status: 'INVALID',
           isValid: false,
@@ -459,17 +662,13 @@ export function validateDocument(
   }
 
   // 3. Evaluate positive strong signals
-  const matchedSignals: string[] = [];
+  const matchedStrongSignals: string[] = [];
   const missingSignals: string[] = [];
   let score = 0;
 
   for (const signal of config.strongSignals) {
-    const isMatched = typeof signal.term === 'string'
-      ? rawText.toLowerCase().includes(signal.term.toLowerCase())
-      : signal.term.test(rawText);
-
-    if (isMatched) {
-      matchedSignals.push(signal.label);
+    if (isSignalMatched(signal, normText, compactText, rawText)) {
+      matchedStrongSignals.push(signal.label);
       score += signal.weight;
     } else {
       missingSignals.push(signal.label);
@@ -477,13 +676,10 @@ export function validateDocument(
   }
 
   // 4. Evaluate supporting signals
+  const matchedSupportingSignals: string[] = [];
   for (const signal of config.supportingSignals) {
-    const isMatched = typeof signal.term === 'string'
-      ? rawText.toLowerCase().includes(signal.term.toLowerCase())
-      : signal.term.test(rawText);
-
-    if (isMatched) {
-      matchedSignals.push(signal.label);
+    if (isSignalMatched(signal, normText, compactText, rawText)) {
+      matchedSupportingSignals.push(signal.label);
       score += signal.weight;
     }
   }
@@ -491,27 +687,23 @@ export function validateDocument(
   // 5. Evaluate contradictory signals (negative weight)
   const contradictorySignals: string[] = [];
   for (const signal of config.contradictorySignals) {
-    const isContradictory = typeof signal.term === 'string'
-      ? rawText.toLowerCase().includes(signal.term.toLowerCase())
-      : signal.term.test(rawText);
-
-    if (isContradictory) {
+    if (isSignalMatched(signal, normText, compactText, rawText)) {
       contradictorySignals.push(signal.label);
       score -= signal.weight;
     }
   }
 
-  // 6. Normalize score to 0–100
+  const matchedSignals = [...matchedStrongSignals, ...matchedSupportingSignals];
   const normalizedScore = Math.max(0, Math.min(100, score));
 
-  // 7. Decision logic based on score and contradictory signals
-  if (contradictorySignals.length > 0 && matchedSignals.length === 0) {
+  // 6. Contradictory signals override if strong matches are absent or score was eliminated
+  if (contradictorySignals.length > 0 && (matchedStrongSignals.length === 0 || score <= 0)) {
     return {
       status: 'INVALID',
       isValid: false,
       confidence: 'NONE',
       confidenceScore: 0,
-      matchedSignals: [],
+      matchedSignals,
       missingSignals: missingSignals.slice(0, 3),
       contradictorySignals,
       reason: `This does not appear to be a ${config.titleEn}. The image contains indicators of a different document (${contradictorySignals.join(', ')}).`,
@@ -521,7 +713,21 @@ export function validateDocument(
     };
   }
 
-  if (normalizedScore >= config.minValidScore && matchedSignals.length >= 2) {
+  // 7. Valid: sufficient score AND at least 2 independent strong signals
+  // For DEATH_CERTIFICATE, at least one core death-identifying signal is required to distinguish
+  // from general municipal notices or birth registration documents.
+  const hasCoreDeathSignal =
+    docType !== 'DEATH_CERTIFICATE' ||
+    matchedStrongSignals.some(
+      (s) =>
+        s === 'Death Certificate' ||
+        s === 'Certificate of Death' ||
+        s === 'Date of Death' ||
+        s === 'Registration of Death' ||
+        s === 'Form No. 6'
+    );
+
+  if (normalizedScore >= config.minValidScore && matchedStrongSignals.length >= 2 && hasCoreDeathSignal) {
     return {
       status: 'VALID',
       isValid: true,
@@ -530,15 +736,16 @@ export function validateDocument(
       matchedSignals,
       missingSignals: [],
       contradictorySignals,
-      reason: `${config.titleEn} verified with matching evidence (${matchedSignals.slice(0, 3).join(', ')}).`,
-      reasonHi: `${config.titleHi} प्रमाणों (${matchedSignals.slice(0, 3).join(', ')}) के साथ सत्यापित हुआ।`,
+      reason: `${config.titleEn} document type verified with matching evidence (${matchedSignals.slice(0, 5).join(', ')}).`,
+      reasonHi: `${config.titleHi} दस्तावेज़ प्रकार की प्रमाणों (${matchedSignals.slice(0, 5).join(', ')}) के साथ पुष्टि हुई।`,
     };
   }
 
-  if (normalizedScore >= config.minReviewScore || matchedSignals.length >= 1) {
+  // 8. Needs review: partial signals (at least 1 strong signal or multiple signals with score >= minReviewScore)
+  if (normalizedScore >= config.minReviewScore && (matchedStrongSignals.length >= 1 || matchedSignals.length >= 2)) {
     return {
       status: 'NEEDS_REVIEW',
-      isValid: false, // Not yet verified until user confirms or clearer copy uploaded
+      isValid: false,
       confidence: 'MEDIUM',
       confidenceScore: normalizedScore,
       matchedSignals,
@@ -551,7 +758,7 @@ export function validateDocument(
     };
   }
 
-  // Weak or zero signals found
+  // 9. Weak or zero signals found: INVALID
   return {
     status: 'INVALID',
     isValid: false,

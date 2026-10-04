@@ -4,6 +4,65 @@
 import { OcrData } from './types';
 
 /**
+ * Client-side OCR image preprocessing.
+ * For low-resolution uploads (e.g. screenshots with width or height < 1200px),
+ * small text font size (6-10px) causes Tesseract LSTM segmentation to fail.
+ * Scaling the image to a target resolution (min dimension ~1400px) on an HTML canvas
+ * dramatically improves OCR character recognition accuracy.
+ */
+async function preprocessImageForOcr(file: File): Promise<HTMLCanvasElement | File> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return file;
+  }
+  if (!file.type || !file.type.startsWith('image/')) {
+    return file;
+  }
+
+  try {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Image failed to load'));
+      img.src = url;
+    });
+    URL.revokeObjectURL(url);
+
+    const { naturalWidth: width, naturalHeight: height } = img;
+    if (!width || !height) return file;
+
+    const minDim = Math.min(width, height);
+    const maxDim = Math.max(width, height);
+
+    let scale = 1;
+    if (minDim < 900 || maxDim < 1300) {
+      scale = Math.min(3, Math.max(1.8, 1400 / minDim));
+    }
+
+    if (scale <= 1.05) {
+      return file;
+    }
+
+    const targetWidth = Math.round(width * scale);
+    const targetHeight = Math.round(height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    return canvas;
+  } catch {
+    return file;
+  }
+}
+
+/**
  * Run OCR on a File and extract structured fields.
  * Progress callback: 0-100
  */
@@ -16,7 +75,9 @@ export async function extractOcrData(
 
   onProgress?.(5);
 
-  const result = await Tesseract.recognize(file, 'eng', {
+  const inputForOcr = await preprocessImageForOcr(file);
+
+  const result = await Tesseract.recognize(inputForOcr, 'eng', {
     logger: (m) => {
       if (m.status === 'recognizing text') {
         onProgress?.(Math.round(10 + m.progress * 80));
@@ -46,9 +107,9 @@ export async function extractOcrData(
 // ─── Field extractors ─────────────────────────────────────────────────────────
 
 function extractPan(text: string): string | undefined {
-  // PAN format: AAABB1234C (5 alpha, 4 numeric, 1 alpha)
-  const match = text.match(/\b([A-Z]{5}[0-9]{4}[A-Z])\b/);
-  return match?.[1];
+  // OCR may lowercase letters or insert spaces between characters in a PAN.
+  const match = text.match(/\b([A-Z](?:\s*[A-Z]){4}\s*\d(?:\s*\d){3}\s*[A-Z])\b/i);
+  return match?.[1].replace(/\s+/g, '').toUpperCase();
 }
 
 function extractFolio(text: string): string | undefined {
@@ -62,27 +123,27 @@ function extractFolio(text: string): string | undefined {
 }
 
 function extractName(text: string): string | undefined {
-  // Try labeled fields first
+  // Try labeled fields first, limiting match to single line
   const patterns = [
-    /(?:Name\s*(?:of\s*(?:shareholder|applicant|account\s*holder|deceased)?)?)\s*:?\s*([A-Z][A-Z\s]+)/i,
-    /(?:Sh\.|Shri\s+|Smt\.\s+|Mr\.\s+|Mrs\.\s+|Ms\.\s+)([A-Z][A-Z\s]+)/i,
+    /(?:Name\s*(?:of\s*(?:the\s*)?(?:shareholder|applicant|account\s*holder|deceased))?|Name)\s*[:\-]?\s*([A-Za-z][A-Za-z\s.]{2,40})/i,
+    /(?:Sh\.|Shri\s+|Smt\.\s+|Mr\.\s+|Mrs\.\s+|Ms\.\s+)([A-Za-z][A-Za-z\s.]{2,40})/i,
   ];
   for (const pat of patterns) {
     const m = text.match(pat);
     if (m) {
-      const name = m[1].trim().replace(/\s+/g, ' ');
-      if (name.length > 3 && name.length < 60) return name;
+      const line = m[1].split(/[\r\n]/)[0].trim().replace(/\s+/g, ' ');
+      if (line.length > 3 && line.length < 60) return line;
     }
   }
   return undefined;
 }
 
 function extractDob(text: string): string | undefined {
-  // Various date formats
+  // Various date formats: DOB or Date of Death/Registration
   const match = text.match(
-    /(?:D(?:ate)?\s*(?:of)?\s*B(?:irth)?|DOB)\s*:?\s*(\d{1,2}[\-\/\.]\d{1,2}[\-\/\.]\d{2,4})/i
+    /(?:D(?:ate)?\s*(?:of)?\s*(?:B(?:irth)?|Death|Demise)|DOB)\s*[:\-]?\s*(\d{1,2}[\-\/\.\s]\d{1,2}[\-\/\.\s]\d{2,4})/i
   );
-  return match?.[1];
+  return match?.[1]?.replace(/\s+/g, '-');
 }
 
 function extractAddress(text: string): string | undefined {

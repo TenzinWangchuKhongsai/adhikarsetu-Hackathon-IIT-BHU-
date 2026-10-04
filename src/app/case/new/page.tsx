@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { ClipboardCheck, Landmark, Scale, UserRound } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +15,7 @@ import StepIndicator from '@/components/case/StepIndicator';
 
 const JOURNEY_CONFIG: Record<JourneyType, {
   title: string; titleHi: string;
-  icon: string;
+  icon: typeof UserRound;
   showDeceased: boolean;
   showCompany: boolean;
   showFolio: boolean;
@@ -22,25 +23,25 @@ const JOURNEY_CONFIG: Record<JourneyType, {
   LEGAL_HEIR_IEPF: {
     title: 'Claim Shares of a Deceased Family Member',
     titleHi: 'मृत परिजन के शेयर का दावा करें',
-    icon: '👨‍👩‍👧',
+    icon: UserRound,
     showDeceased: true, showCompany: true, showFolio: true,
   },
   IEPF_ONLY: {
     title: 'Reclaim Unclaimed Dividends / Shares from IEPF',
     titleHi: 'IEPF से लावारिस लाभांश / शेयर वापस लें',
-    icon: '🏦',
+    icon: Landmark,
     showDeceased: false, showCompany: true, showFolio: true,
   },
   SCORES_COMPLAINT: {
     title: 'File a SEBI SCORES Complaint',
     titleHi: 'SEBI SCORES शिकायत दर्ज करें',
-    icon: '⚖️',
+    icon: Scale,
     showDeceased: false, showCompany: true, showFolio: false,
   },
   NOMINEE_REGISTRATION: {
     title: 'Add / Update Nominee',
     titleHi: 'नामांकित व्यक्ति जोड़ें / अपडेट करें',
-    icon: '📋',
+    icon: ClipboardCheck,
     showDeceased: false, showCompany: false, showFolio: true,
   },
 };
@@ -60,6 +61,7 @@ function NewCaseInner() {
   const router = useRouter();
   const journey = (searchParams.get('journey') as JourneyType) || 'LEGAL_HEIR_IEPF';
   const config = JOURNEY_CONFIG[journey] || JOURNEY_CONFIG.LEGAL_HEIR_IEPF;
+  const JourneyIcon = config.icon;
   const [loading, setLoading] = useState(false);
 
   const {
@@ -83,13 +85,13 @@ function NewCaseInner() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <Navbar showBack backHref="/" />
-      <div className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '640px' }}>
+      <div id="main-content" role="main" tabIndex={-1} className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '640px' }}>
         <StepIndicator currentStep={1} />
 
         {/* Journey header */}
         <div className="card animate-fadeInUp" style={{ padding: '24px', marginBottom: '24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }} aria-hidden="true">{config.icon}</div>
-          <h1 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', color: 'var(--color-primary-dark)', marginBottom: '8px' }}>
+          <div className="case-form-icon" aria-hidden="true"><JourneyIcon /></div>
+          <h1 style={{ fontSize: 'clamp(1.65rem, 4vw, 2rem)', color: 'var(--color-primary-dark)', marginBottom: '8px' }}>
             {lang === 'hi' ? config.titleHi : config.title}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
@@ -135,7 +137,7 @@ function NewCaseInner() {
                   placeholder={lang === 'hi' ? 'मृत परिजन का पूरा नाम' : 'Full name of the deceased person'}
                   {...register('deceasedName')}
                 />
-                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '5px' }}>
                   {lang === 'hi' ? 'जैसा शेयर प्रमाण पत्र पर है' : 'As it appears on share certificates'}
                 </p>
               </div>
@@ -151,7 +153,7 @@ function NewCaseInner() {
                   id="companyName"
                   className="input"
                   type="text"
-                  placeholder={lang === 'hi' ? 'जैसे: रिलायंस इंडस्ट्रीज' : 'e.g. Reliance Industries Ltd'}
+                  placeholder={lang === 'hi' ? 'जैसे: टाटा मोटर्स लिमिटेड' : 'e.g. Tata Motors Limited'}
                   {...register('companyName')}
                 />
               </div>
@@ -167,10 +169,10 @@ function NewCaseInner() {
                   id="folioNumber"
                   className="input"
                   type="text"
-                  placeholder={lang === 'hi' ? 'जैसे: 001234 या IN30...' : 'e.g. 001234 or IN30...'}
+                  placeholder={lang === 'hi' ? 'जैसे: TM/104928' : 'e.g. TM/104928'}
                   {...register('folioNumber')}
                 />
-                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '5px' }}>
                   {lang === 'hi' ? 'शेयर प्रमाण पत्र के पीछे मिलेगा' : 'Found on the back of your share certificate'}
                 </p>
               </div>

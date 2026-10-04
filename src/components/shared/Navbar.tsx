@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight, Landmark, Menu, X } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/lib/i18n';
 
@@ -12,85 +14,103 @@ interface NavbarProps {
 
 export default function Navbar({ showBack, backHref = '/', title }: NavbarProps) {
   const { lang, toggle } = useLanguage();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const isHindi = lang === 'hi';
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
 
   return (
-    <nav className="navbar" role="navigation" aria-label="Main navigation">
-      <div className="container-app">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
-          {/* Left: back or brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <>
+      <a className="skip-link" href="#main-content">
+        {isHindi ? 'मुख्य सामग्री पर जाएँ' : 'Skip to main content'}
+      </a>
+      <header className="site-header">
+        <div className="nav-inner">
+          <div className="nav-brand-group">
             {showBack && (
-              <Link
-                href={backHref}
-                className="btn btn-ghost btn-sm"
-                aria-label={t('back', lang)}
-                style={{ padding: '8px 14px', minHeight: '40px', gap: '6px' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m15 18-6-6 6-6"/>
-                </svg>
-                <span style={{ display: 'none' }}>{t('back', lang)}</span>
+              <Link href={backHref} className="nav-back" aria-label={isHindi ? 'वापस जाएँ' : 'Go back'}>
+                <ArrowLeft aria-hidden="true" />
               </Link>
             )}
-            <Link
-              href="/"
-              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
-              aria-label="AdhikarSetu home"
-            >
-              <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #1C4FA1, #2563EB)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }} aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '17px', color: 'var(--color-primary-dark)', lineHeight: 1.1 }}>
-                  {title || t('appName', lang)}
-                </div>
-                {!title && (
-                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                    {lang === 'hi' ? 'आपके अधिकारों का सेतु' : 'Your Rights Bridge'}
-                  </div>
-                )}
-              </div>
+            <Link href="/" className="brand" aria-label="AdhikarSetu home">
+              <span className="brand-mark">
+                <Landmark aria-hidden="true" />
+              </span>
+              <span className="brand-type">
+                <span className="brand-name">{title || 'AdhikarSetu'}</span>
+                <span className="brand-tagline">{isHindi ? 'उलझन से दावे तक' : 'From confusion to claim'}</span>
+              </span>
             </Link>
           </div>
 
-          {/* Right: language toggle + cases */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Link
-              href="/cases"
-              className="btn btn-ghost btn-sm"
-              style={{ padding: '8px 14px', minHeight: '40px', fontSize: '14px' }}
-              aria-label={t('myCases', lang)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14,2 14,8 20,8"/>
-              </svg>
+          <nav
+            id="site-navigation"
+            className={`primary-nav${menuOpen ? ' is-open' : ''}`}
+            aria-label={isHindi ? 'मुख्य नेविगेशन' : 'Main navigation'}
+          >
+            <Link href="/cases" onClick={() => setMenuOpen(false)}>
               {t('myCases', lang)}
             </Link>
+            <Link href="/#how-it-works" onClick={() => setMenuOpen(false)}>
+              {isHindi ? 'कैसे काम करता है' : 'How it works'}
+            </Link>
+            <Link href="/#help" onClick={() => setMenuOpen(false)}>
+              {isHindi ? 'जानकारी' : 'Help'}
+            </Link>
+            <div className="nav-mobile-actions">
+              <button
+                type="button"
+                className="language-button"
+                onClick={toggle}
+                aria-label={isHindi ? 'Switch to English' : 'Switch to Hindi'}
+              >
+                {isHindi ? 'EN' : 'हिंदी'}
+              </button>
+              <Link href="/case/new" className="btn btn-primary" onClick={() => setMenuOpen(false)}>
+                {isHindi ? 'नया मामला' : 'New case'} <ArrowRight aria-hidden="true" />
+              </Link>
+            </div>
+          </nav>
 
+          <div className={`nav-actions${menuOpen ? ' menu-open' : ''}`}>
             <button
+              type="button"
+              className="language-button"
               onClick={toggle}
-              className="btn btn-ghost btn-sm"
-              style={{ padding: '8px 14px', minHeight: '40px', fontSize: '14px', fontWeight: 700 }}
-              aria-label={lang === 'en' ? 'Switch to Hindi' : 'Switch to English'}
-              title={lang === 'en' ? 'हिंदी में बदलें' : 'Switch to English'}
+              aria-label={isHindi ? 'Switch to English' : 'Switch to Hindi'}
             >
-              {lang === 'en' ? 'हिं' : 'EN'}
+              {isHindi ? 'EN' : 'हिंदी'}
+            </button>
+            <Link href="/case/new" className="btn btn-primary nav-cta">
+              {isHindi ? 'नया मामला' : 'New case'} <ArrowRight aria-hidden="true" />
+            </Link>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              className="nav-menu-button"
+              aria-label={menuOpen ? (isHindi ? 'मेनू बंद करें' : 'Close menu') : (isHindi ? 'मेनू खोलें' : 'Open menu')}
+              aria-expanded={menuOpen}
+              aria-controls="site-navigation"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
             </button>
           </div>
         </div>
-      </div>
-    </nav>
+      </header>
+    </>
   );
 }

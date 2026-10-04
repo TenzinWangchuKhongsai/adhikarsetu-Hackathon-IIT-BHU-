@@ -5,14 +5,15 @@ import { useAllCases } from '@/hooks/useCase';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/lib/i18n';
 import Link from 'next/link';
+import { ClipboardCheck, FileText, Landmark, Scale, Trash2, UserRound } from 'lucide-react';
 import Navbar from '@/components/shared/Navbar';
 import { Case } from '@/lib/types';
 
-const JOURNEY_ICONS: Record<string, string> = {
-  LEGAL_HEIR_IEPF: '👨‍👩‍👧',
-  IEPF_ONLY: '🏦',
-  SCORES_COMPLAINT: '⚖️',
-  NOMINEE_REGISTRATION: '📋',
+const JOURNEY_ICONS: Record<string, typeof UserRound> = {
+  LEGAL_HEIR_IEPF: UserRound,
+  IEPF_ONLY: Landmark,
+  SCORES_COMPLAINT: Scale,
+  NOMINEE_REGISTRATION: ClipboardCheck,
 };
 
 const JOURNEY_LABELS: Record<string, { en: string; hi: string }> = {
@@ -33,33 +34,46 @@ const STATUS_COLORS: Record<string, string> = {
 
 function CaseCard({ c, lang, onDelete }: { c: Case; lang: 'en' | 'hi'; onDelete: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
-  const icon = JOURNEY_ICONS[c.journeyType] ?? '📁';
+  const JourneyIcon = JOURNEY_ICONS[c.journeyType] ?? FileText;
   const journeyLabel = JOURNEY_LABELS[c.journeyType];
   const statusColor = STATUS_COLORS[c.status] ?? 'var(--color-text-secondary)';
-  const statusLabel = lang === 'hi'
-    ? ({
-        DRAFT: 'मसौदा',
-        DOCUMENTS_UPLOADED: 'दस्तावेज़ अपलोड',
-        CHECKLIST_COMPLETE: 'चेकलिस्ट पूर्ण',
-        NEEDS_ATTENTION: 'ध्यान दें',
-        NOT_READY: 'तैयारी अधूरी',
-        READY: 'तैयार',
-      }[c.status] ?? c.status)
-    : ({
-        DRAFT: 'Draft',
-        DOCUMENTS_UPLOADED: 'Docs Uploaded',
-        CHECKLIST_COMPLETE: 'Checklist Done',
-        NEEDS_ATTENTION: 'Needs Attention',
-        NOT_READY: 'Not Ready',
-        READY: 'Ready for Review',
-      }[c.status] ?? c.status);
-
+  const statusLabel =
+    lang === 'hi'
+      ? ({
+          DRAFT: 'मसौदा',
+          DOCUMENTS_UPLOADED: 'दस्तावेज़ अपलोड',
+          CHECKLIST_COMPLETE: 'चेकलिस्ट पूर्ण',
+          NEEDS_ATTENTION: 'ध्यान दें',
+          NOT_READY: 'तैयारी अधूरी',
+          READY: 'तैयार',
+        }[c.status] ?? c.status)
+      : ({
+          DRAFT: 'Draft',
+          DOCUMENTS_UPLOADED: 'Docs Uploaded',
+          CHECKLIST_COMPLETE: 'Checklist Done',
+          NEEDS_ATTENTION: 'Needs Attention',
+          NOT_READY: 'Not Ready',
+          READY: 'Ready for Review',
+        }[c.status] ?? c.status);
 
   return (
-    <div className="card animate-fadeInUp" style={{ padding: '18px 20px' }}>
+    <article className="card case-card animate-fadeInUp" style={{ padding: '18px 20px' }}>
       <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: '28px', flexShrink: 0, width: 46, height: 46, background: 'var(--color-muted)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
-          {icon}
+        <div
+          style={{
+            fontSize: '28px',
+            flexShrink: 0,
+            width: 46,
+            height: 46,
+            background: 'var(--color-muted)',
+            borderRadius: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          aria-hidden="true"
+        >
+          <JourneyIcon aria-hidden="true" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
@@ -76,7 +90,19 @@ function CaseCard({ c, lang, onDelete }: { c: Case; lang: 'en' | 'hi'; onDelete:
               <span style={{ fontSize: '11px', fontWeight: 700, color: statusColor }}>
                 ● {statusLabel}
               </span>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: c.readinessScore >= 80 ? 'var(--color-success)' : c.readinessScore >= 40 ? 'var(--color-accent)' : 'var(--color-danger)', lineHeight: 1.2 }}>
+              <div
+                style={{
+                  fontSize: '22px',
+                  fontWeight: 900,
+                  color:
+                    c.readinessScore >= 80
+                      ? 'var(--color-success)'
+                      : c.readinessScore >= 40
+                      ? 'var(--color-accent)'
+                      : 'var(--color-danger)',
+                  lineHeight: 1.2,
+                }}
+              >
                 {c.readinessScore}%
               </div>
             </div>
@@ -94,27 +120,50 @@ function CaseCard({ c, lang, onDelete }: { c: Case; lang: 'en' | 'hi'; onDelete:
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
-        <Link href={`/case/${c.id}/documents`} className="btn btn-outline btn-sm" style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+      <div
+        className="case-card-actions"
+        style={{
+          display: 'flex',
+          gap: '8px',
+          marginTop: '14px',
+          paddingTop: '12px',
+          borderTop: '1px solid var(--color-border)',
+        }}
+      >
+        <Link
+          href={`/case/${c.id}/documents`}
+          className="btn btn-outline btn-sm"
+          style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+        >
           {lang === 'hi' ? 'दस्तावेज़' : 'Documents'}
         </Link>
-        <Link href={`/case/${c.id}/checklist`} className="btn btn-outline btn-sm" style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+        <Link
+          href={`/case/${c.id}/checklist`}
+          className="btn btn-outline btn-sm"
+          style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+        >
           {lang === 'hi' ? 'चेकलिस्ट' : 'Checklist'}
         </Link>
-        <Link href={`/case/${c.id}/summary`} className="btn btn-primary btn-sm" style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+        <Link
+          href={`/case/${c.id}/summary`}
+          className="btn btn-primary btn-sm"
+          style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+        >
           {lang === 'hi' ? 'सारांश' : 'Summary'}
         </Link>
         {confirming ? (
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(220,38,38,0.08)',
-            padding: '2px 8px',
-            borderRadius: '8px',
-            border: '1.5px solid rgba(220,38,38,0.3)',
-            flexShrink: 0,
-          }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(220,38,38,0.08)',
+              padding: '2px 8px',
+              borderRadius: '8px',
+              border: '1.5px solid rgba(220,38,38,0.3)',
+              flexShrink: 0,
+            }}
+          >
             <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-danger)' }}>
               {lang === 'hi' ? 'हटाएं?' : 'Delete?'}
             </span>
@@ -150,13 +199,11 @@ function CaseCard({ c, lang, onDelete }: { c: Case; lang: 'en' | 'hi'; onDelete:
             title={lang === 'hi' ? 'मामला हटाएं' : 'Delete case'}
             id={`delete-case-${c.id}-btn`}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-            </svg>
+            <Trash2 aria-hidden="true" />
           </button>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -167,16 +214,35 @@ export default function CasesPage() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <Navbar showBack backHref="/" />
-      <div className="container-app" style={{ paddingTop: '32px', paddingBottom: '60px', maxWidth: '720px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+      <div
+        id="main-content"
+        role="main"
+        tabIndex={-1}
+        className="container-app"
+        style={{ paddingTop: '32px', paddingBottom: '60px', maxWidth: '720px' }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
           <div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-primary-dark)', marginBottom: '4px' }}>
               {t('myCases', lang)}
             </h1>
             <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
               {cases.length > 0
-                ? (lang === 'hi' ? `${cases.length} सक्रिय मामले` : `${cases.length} active case${cases.length > 1 ? 's' : ''}`)
-                : (lang === 'hi' ? 'कोई मामला नहीं' : 'No cases yet')}
+                ? lang === 'hi'
+                  ? `${cases.length} सक्रिय मामले`
+                  : `${cases.length} active case${cases.length > 1 ? 's' : ''}`
+                : lang === 'hi'
+                ? 'कोई मामला नहीं'
+                : 'No cases yet'}
             </p>
           </div>
           <Link href="/" className="btn btn-primary btn-sm" id="new-case-from-cases-btn">
@@ -192,7 +258,9 @@ export default function CasesPage() {
           </div>
         ) : cases.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }} aria-hidden="true">📭</div>
+            <div className="empty-state-icon" aria-hidden="true">
+              <FileText />
+            </div>
             <h2 style={{ fontSize: '20px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
               {t('noCases', lang)}
             </h2>

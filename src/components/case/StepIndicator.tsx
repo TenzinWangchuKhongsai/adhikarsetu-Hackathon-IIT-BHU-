@@ -1,83 +1,52 @@
 'use client';
 
+import { Check } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { t } from '@/lib/i18n';
 
-interface Step {
-  id: string;
-  label: string;
-  labelHi: string;
-}
-
-const STEPS: Step[] = [
-  { id: 'problem', label: 'Problem', labelHi: 'समस्या' },
+const STEPS = [
+  { id: 'case', label: 'Case', labelHi: 'मामला' },
   { id: 'documents', label: 'Documents', labelHi: 'दस्तावेज़' },
   { id: 'checklist', label: 'Checklist', labelHi: 'चेकलिस्ट' },
-  { id: 'summary', label: 'Summary', labelHi: 'सारांश' },
+  { id: 'review', label: 'Review', labelHi: 'समीक्षा' },
 ];
 
 interface StepIndicatorProps {
-  currentStep: number; // 1-indexed
+  currentStep: number;
 }
 
 export default function StepIndicator({ currentStep }: StepIndicatorProps) {
   const { lang } = useLanguage();
+  const currentLabel = lang === 'hi' ? STEPS[currentStep - 1]?.labelHi : STEPS[currentStep - 1]?.label;
 
   return (
-    <div
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' }}
-      role="navigation"
-      aria-label="Progress steps"
-    >
-      {STEPS.map((step, index) => {
-        const stepNum = index + 1;
-        const isDone = stepNum < currentStep;
-        const isActive = stepNum === currentStep;
-        const isPending = stepNum > currentStep;
-
-        return (
-          <div key={step.id} style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Connector line */}
-            {index > 0 && (
-              <div style={{
-                width: '40px',
-                height: '3px',
-                borderRadius: '99px',
-                background: isDone || isActive ? 'var(--color-primary)' : 'var(--color-muted)',
-                transition: 'background 0.3s ease',
-                flexShrink: 0,
-              }} aria-hidden="true" />
-            )}
-
-            {/* Step */}
-            <div
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+    <nav className="stepper" aria-label={lang === 'hi' ? 'मामला तैयार करने के चरण' : 'Case preparation steps'}>
+      <ol className="stepper-list">
+        {STEPS.map((step, index) => {
+          const stepNumber = index + 1;
+          const isDone = stepNumber < currentStep;
+          const isActive = stepNumber === currentStep;
+          return (
+            <li
+              key={step.id}
+              className={`stepper-item${isActive ? ' is-active' : ''}${isDone ? ' is-done' : ''}`}
               aria-current={isActive ? 'step' : undefined}
             >
-              <div
-                className={`step-dot ${isActive ? 'active' : isDone ? 'done' : 'pending'}`}
-                aria-label={`${t('step', lang)} ${stepNum}: ${lang === 'hi' ? step.labelHi : step.label} — ${isDone ? 'completed' : isActive ? 'current' : 'upcoming'}`}
-              >
-                {isDone ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                ) : (
-                  stepNum
-                )}
-              </div>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--color-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text-secondary)',
-                whiteSpace: 'nowrap',
-              }}>
-                {lang === 'hi' ? step.labelHi : step.label}
+              <span className="stepper-marker" aria-hidden="true">
+                {isDone ? <Check /> : `0${stepNumber}`}
               </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+              <span className="stepper-label">{lang === 'hi' ? step.labelHi : step.label}</span>
+              {index < STEPS.length - 1 && <span className="stepper-connector" aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="stepper-mobile" aria-live="polite">
+        <span>{lang === 'hi' ? `चरण ${currentStep} / ${STEPS.length}` : `Step ${currentStep} of ${STEPS.length}`}</span>
+        <strong>{currentLabel}</strong>
+        <span className="stepper-mobile-track" aria-hidden="true">
+          <span style={{ width: `${(currentStep / STEPS.length) * 100}%` }} />
+        </span>
+      </div>
+    </nav>
   );
 }

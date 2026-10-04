@@ -32,19 +32,24 @@ export default function OcrResultCard({
   const validation = doc.validation;
   const isInvalid = validation?.status === 'INVALID' || doc.ocrStatus === 'ERROR';
   const isReview = validation?.status === 'NEEDS_REVIEW' && !validation?.userConfirmed;
-  const isValid = doc.verified || validation?.status === 'VALID' || validation?.userConfirmed;
+  const isUserConfirmed = Boolean(validation?.userConfirmed);
+  const isValid = !isUserConfirmed && (doc.verified || validation?.status === 'VALID');
 
   const cardBorder = isValid
-    ? '2px solid rgba(22,163,74,0.3)'
+    ? '1px solid #c5dbcb'
+    : isUserConfirmed
+    ? '1px solid #cbb8b2'
     : isReview
-    ? '2px solid rgba(245,158,11,0.5)'
-    : '2px solid rgba(220,38,38,0.5)';
+    ? '1px solid #e9d6ac'
+    : '1px solid #e8c6c4';
 
   const cardBg = isValid
-    ? 'var(--color-surface)'
+    ? '#f5f9f6'
+    : isUserConfirmed
+    ? '#f8f4f2'
     : isReview
-    ? 'rgba(254,243,199,0.2)'
-    : 'rgba(254,226,226,0.25)';
+    ? '#fbf7ef'
+    : '#fbf4f3';
 
   return (
     <div
@@ -65,14 +70,14 @@ export default function OcrResultCard({
           width: 44,
           height: 44,
           borderRadius: 10,
-          background: isValid ? 'rgba(22,163,74,0.1)' : isReview ? 'rgba(245,158,11,0.15)' : 'rgba(220,38,38,0.1)',
+          background: isValid ? '#e8f1eb' : isUserConfirmed ? '#f2e9e5' : isReview ? '#faf0dc' : '#f8e9e8',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           fontSize: '20px',
         }} aria-hidden="true">
-          {isValid ? '✓' : isReview ? '⚠️' : '✗'}
+          {isValid ? '✓' : isUserConfirmed ? 'i' : isReview ? '!' : '×'}
         </div>
 
         {/* Info */}
@@ -82,7 +87,7 @@ export default function OcrResultCard({
               <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text)', margin: 0 }}>
                 {docLabel}
               </p>
-              <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
                 {doc.fileName} • {formatSize(doc.fileSize)}
               </p>
             </div>
@@ -91,7 +96,7 @@ export default function OcrResultCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
               {validation && validation.confidence && (
                 <span style={{
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   padding: '3px 8px',
                   borderRadius: '4px',
@@ -108,21 +113,23 @@ export default function OcrResultCard({
               )}
 
               <span style={{
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 800,
                 padding: '4px 10px',
                 borderRadius: '6px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
-                background: isValid ? 'rgba(22,163,74,0.15)' : isReview ? '#FEF3C7' : '#FEE2E2',
-                color: isValid ? '#15803D' : isReview ? '#B45309' : '#B91C1C',
-                border: `1px solid ${isValid ? 'rgba(22,163,74,0.3)' : isReview ? 'rgba(245,158,11,0.4)' : 'rgba(220,38,38,0.4)'}`,
+                background: isValid ? '#e8f1eb' : isUserConfirmed ? '#f2e9e5' : isReview ? '#faf0dc' : '#f8e9e8',
+                color: isValid ? '#20563e' : isUserConfirmed ? '#604b45' : isReview ? '#76500d' : '#8c272d',
+                border: `1px solid ${isValid ? '#c5dbcb' : isUserConfirmed ? '#d9c9c2' : isReview ? '#e9d6ac' : '#e8c6c4'}`,
               }}>
                 {isValid
-                  ? (validation?.userConfirmed ? (lang === 'hi' ? 'पुष्टीकृत (मैन्युअल)' : 'USER CONFIRMED') : (lang === 'hi' ? '✓ दस्तावेज़ प्रकार सही' : '✓ DOCUMENT TYPE CHECK PASSED'))
+                  ? (lang === 'hi' ? '✓ दस्तावेज़ प्रकार की जाँच सफल' : '✓ DOCUMENT TYPE CHECK PASSED')
+                  : isUserConfirmed
+                  ? (lang === 'hi' ? 'उपयोगकर्ता ने पुष्टि की — दस्तावेज़ प्रमाण नहीं' : 'USER CONFIRMED — NO DOCUMENT PROOF')
                   : isReview
-                  ? (lang === 'hi' ? '⚠️ समीक्षा आवश्यक' : '⚠️ NEEDS REVIEW')
-                  : (lang === 'hi' ? '✗ अस्वीकृत — गलत या अस्पष्ट दस्तावेज़' : '✗ REJECTED — WRONG OR UNCLEAR DOCUMENT')}
+                  ? (lang === 'hi' ? 'समीक्षा आवश्यक' : 'NEEDS REVIEW')
+                  : (lang === 'hi' ? 'अस्वीकृत — गलत या अस्पष्ट दस्तावेज़' : 'REJECTED — WRONG OR UNCLEAR DOCUMENT')}
               </span>
 
               <button
@@ -150,14 +157,18 @@ export default function OcrResultCard({
             <p style={{
               fontSize: '13px',
               margin: '0 0 6px',
-              color: isValid ? '#166534' : isReview ? '#92400E' : '#991B1B',
+              color: isValid ? '#20563e' : isUserConfirmed ? '#604b45' : isReview ? '#76500d' : '#8c272d',
               fontWeight: 600,
               lineHeight: 1.4,
             }}>
               {isValid
                 ? (lang === 'hi'
-                    ? 'इस दस्तावेज़ से निकाले गए पाठ में अनुरोधित प्रकार से मेल खाने वाले मजबूत संकेत हैं। यह प्रामाणिकता सिद्ध नहीं करता है।'
-                    : 'The text extracted from this document contains strong signals matching the requested document type. This does not prove authenticity.')
+                    ? 'निकाले गए पाठ में अनुरोधित दस्तावेज़ प्रकार से मेल खाने वाले संकेत हैं। यह प्रामाणिकता सिद्ध नहीं करता है।'
+                    : 'The extracted text contains signals matching the requested document type. This does not prove authenticity.')
+                : isUserConfirmed
+                ? (lang === 'hi'
+                    ? 'आपकी पुष्टि दर्ज है, लेकिन यह दस्तावेज़ के प्रकार की जाँच या दस्तावेज़ प्रमाण के बराबर नहीं है।'
+                    : 'Your confirmation is recorded, but it is not the same as a document type check or document evidence.')
                 : isReview
                 ? (lang === 'hi'
                     ? 'दस्तावेज़ प्रासंगिक हो सकता है, लेकिन निकाला गया पाठ दस्तावेज़ प्रकार की पुष्टि करने के लिए पर्याप्त नहीं है। कृपया समीक्षा करें या बदलें।'
@@ -167,33 +178,42 @@ export default function OcrResultCard({
                     : 'This document does not contain enough information matching the requested document type. It has not been counted as evidence.')}
             </p>
 
-            {validation && validation.reason && (
-              <p style={{ fontSize: '12px', margin: '0 0 6px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+            {validation && validation.reason && !isValid && (
+              <p style={{ fontSize: '14px', margin: '0 0 6px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
                 {lang === 'hi' ? validation.reasonHi : validation.reason}
               </p>
             )}
 
             {/* Matched evidence chips */}
             {validation && validation.matchedSignals.length > 0 && (
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', alignSelf: 'center' }}>
-                  {lang === 'hi' ? 'मिले संकेत:' : 'Matched signals:'}
-                </span>
-                {validation.matchedSignals.map((sig) => (
-                  <span
-                    key={sig}
-                    style={{
-                      fontSize: '11px',
-                      background: isValid ? 'rgba(22,163,74,0.12)' : 'rgba(245,158,11,0.15)',
-                      color: isValid ? '#15803D' : '#92400E',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    ✓ {sig}
-                  </span>
-                ))}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: isValid ? '#15803D' : '#92400E',
+                  marginBottom: '4px',
+                }}>
+                  {isValid
+                    ? (lang === 'hi' ? 'पहचाने गए मजबूत दस्तावेज़ संकेत:' : 'Strong document signals detected:')
+                    : (lang === 'hi' ? 'पहचाने गए संकेत:' : 'Document signals detected:')}
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {validation.matchedSignals.map((sig) => (
+                    <span
+                      key={sig}
+                      style={{
+                        fontSize: '12px',
+                        background: isValid ? 'rgba(22,163,74,0.12)' : 'rgba(245,158,11,0.15)',
+                        color: isValid ? '#15803D' : '#92400E',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      • {sig}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -228,7 +248,7 @@ export default function OcrResultCard({
               style={{ fontWeight: 700 }}
               id={`replace-${doc.type}-btn`}
             >
-              🔄 {lang === 'hi' ? 'दस्तावेज़ बदलें' : 'Replace Document'}
+              {lang === 'hi' ? 'दस्तावेज़ बदलें' : 'Replace document'}
             </button>
           )}
         </div>
@@ -260,7 +280,7 @@ export default function OcrResultCard({
                 style={{ background: '#D97706', color: '#fff', fontWeight: 700 }}
                 id={`confirm-${doc.id}-btn`}
               >
-                ✓ {lang === 'hi' ? 'मैं पुष्टि करता हूँ' : 'Confirm Document'}
+                ✓ {lang === 'hi' ? 'मैंने समीक्षा की' : 'Confirm I’ve reviewed this'}
               </button>
             )}
             {onReplace && (
@@ -310,7 +330,7 @@ function OcrField({ label, value }: { label: string; value: string }) {
       borderRadius: '6px',
       padding: '6px 10px',
     }}>
-      <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
         {label}
       </p>
       <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', margin: 0, wordBreak: 'break-all' }}>

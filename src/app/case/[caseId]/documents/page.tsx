@@ -11,6 +11,7 @@ import StepIndicator from '@/components/case/StepIndicator';
 import DocumentUploader from '@/components/documents/DocumentUploader';
 import OcrResultCard from '@/components/documents/OcrResultCard';
 import MismatchAlert from '@/components/documents/MismatchAlert';
+import { Paperclip } from 'lucide-react';
 import { syncChecklistWithDocuments } from '@/lib/rules-engine';
 
 export default function DocumentsPage() {
@@ -53,10 +54,12 @@ export default function DocumentsPage() {
 
   const handleTriggerReplace = useCallback((type: DocumentType) => {
     setTargetReplaceType(type);
-    // Smooth scroll to uploader
     const uploaderEl = document.getElementById('uploader-card');
     if (uploaderEl) {
-      uploaderEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      uploaderEl.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
     }
   }, []);
 
@@ -85,7 +88,7 @@ export default function DocumentsPage() {
   }
 
   const requiredItems = caseData.checklist.filter((i) => i.required);
-  const verifiedCount = caseData.documents.filter((d) => d.verified).length;
+  const verifiedCount = caseData.documents.filter((d) => d.validation?.status === 'VALID' && !d.validation.userConfirmed).length;
   const invalidDocs = caseData.documents.filter((d) => d.validation?.status === 'INVALID');
   const reviewDocs = caseData.documents.filter((d) => d.validation?.status === 'NEEDS_REVIEW' && !d.validation?.userConfirmed);
   const missingCount = requiredItems.filter((i) => i.evidenceStatus === 'MISSING').length;
@@ -93,7 +96,7 @@ export default function DocumentsPage() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <Navbar showBack backHref="/" />
-      <div className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
+      <div id="main-content" role="main" tabIndex={-1} className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
         <StepIndicator currentStep={2} />
 
         {/* Case info & Truthful Readiness Header */}
@@ -129,7 +132,7 @@ export default function DocumentsPage() {
           {/* Metric Pills */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
             <span style={{ fontSize: '12px', background: 'rgba(22,163,74,0.1)', color: '#15803D', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>
-              ✓ {verifiedCount} {lang === 'hi' ? 'सत्यापित दस्तावेज़' : 'Verified'}
+              ✓ {verifiedCount} {lang === 'hi' ? 'प्रकार जाँच सफल' : 'Type checks passed'}
             </span>
             {invalidDocs.length > 0 && (
               <span style={{ fontSize: '12px', background: 'rgba(220,38,38,0.12)', color: '#B91C1C', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>
@@ -149,7 +152,7 @@ export default function DocumentsPage() {
           {/* Explanation if not ready */}
           {caseData.readinessExplanation && (
             <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '10px 0 0', lineHeight: 1.4 }}>
-              ℹ️ {caseData.readinessExplanation}
+              {caseData.readinessExplanation}
             </p>
           )}
         </div>
@@ -167,7 +170,7 @@ export default function DocumentsPage() {
               gap: '10px',
               alignItems: 'center'
             }}>
-              <span style={{ fontSize: '18px' }} aria-hidden="true">⚠️</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-warning)' }} aria-hidden="true">!</span>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '13px', color: '#991B1B' }}>
                   {lang === 'hi' ? 'सक्रिय रुकावट: नाम में विसंगति पाई गई' : 'Active Blocker: Name Mismatch Detected'}
@@ -193,12 +196,12 @@ export default function DocumentsPage() {
             </svg>
             <div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: '13px', color: '#991B1B' }}>
-                {lang === 'hi' ? 'अस्वीकृत दस्तावेज़ मिला: चेकलिस्ट सत्यापित नहीं हुई' : 'Invalid Document Uploaded: Not Counted Towards Checklist'}
+                {lang === 'hi' ? 'दस्तावेज़ प्रकार की जाँच सफल नहीं हुई' : 'We couldn’t confirm this is the document you need'}
               </p>
               <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#7F1D1D' }}>
                 {lang === 'hi'
-                  ? 'अपलोड किए गए दस्तावेज़ में आवश्यक पहचान प्रमाण नहीं मिला (जैसे रैंडम फ़ोटो या अस्पष्ट स्कैन)। कृपया नीचे दिए गए "दस्तावेज़ बदलें" बटन पर क्लिक करके स्पष्ट प्रति अपलोड करें।'
-                  : 'The uploaded file lacked the required certificate indicators (e.g. random image or wrong document). Click "Replace Document" below to upload an authentic certificate.'}
+                  ? 'यह दस्तावेज़ आवश्यक प्रकार का नहीं लगता या साफ़ पढ़ा नहीं जा सका। कृपया नीचे से इसकी स्पष्ट प्रति बदलें।'
+                  : 'This doesn’t appear to be the document you need, or it could not be read clearly. Replace it with a clearer copy below.'}
               </p>
             </div>
           </div>
@@ -207,7 +210,7 @@ export default function DocumentsPage() {
         {/* Uploader Card */}
         <div id="uploader-card" className="card animate-fadeInUp delay-100" style={{ padding: '24px', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--color-primary-dark)' }}>
-            📎 {t('uploadDocuments', lang)}
+            <Paperclip aria-hidden="true" /> {t('uploadDocuments', lang)}
           </h2>
           <DocumentUploader
             onDocumentAdded={handleDocumentAdded}

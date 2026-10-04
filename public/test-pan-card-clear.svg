@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" fill="#fff" />
+  <rect x="36" y="36" width="1528" height="928" fill="none" stroke="#222" stroke-width="8" />
+  <text x="90" y="125" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#111">SAMPLE ONLY - NOT A VALID GOVERNMENT DOCUMENT</text>
+  <text x="90" y="250" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="#111">INCOME TAX DEPARTMENT - GOVERNMENT OF INDIA</text>
+  <text x="90" y="385" font-family="Arial, sans-serif" font-size="52" fill="#111">PERMANENT ACCOUNT NUMBER</text>
+  <text x="90" y="540" font-family="Arial, sans-serif" font-size="112" font-weight="700" letter-spacing="8" fill="#111">ABCDE1234F</text>
+  <text x="90" y="690" font-family="Arial, sans-serif" font-size="58" fill="#111">NAME: RAHUL KUMAR</text>
+  <text x="90" y="810" font-family="Arial, sans-serif" font-size="58" fill="#111">FATHER: RAMESH SHARMA</text>
+  <text x="90" y="910" font-family="Arial, sans-serif" font-size="58" fill="#111">DATE OF BIRTH: 12/04/1985</text>
+</svg>

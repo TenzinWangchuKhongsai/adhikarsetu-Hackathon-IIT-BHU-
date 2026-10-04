@@ -44,7 +44,7 @@ export default function ChecklistPage() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <Navbar showBack backHref={`/case/${caseId}/documents`} />
-      <div className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
+      <div id="main-content" role="main" tabIndex={-1} className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
         <StepIndicator currentStep={3} />
 
         {/* Score + Progress header */}
@@ -94,8 +94,8 @@ export default function ChecklistPage() {
                 />
               </div>
 
-              <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
-                ℹ️ {lang === 'hi' ? evalResult.explanationHi : evalResult.explanation}
+              <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.55 }}>
+                {lang === 'hi' ? evalResult.explanationHi : evalResult.explanation}
               </p>
             </div>
           </div>
@@ -109,10 +109,10 @@ export default function ChecklistPage() {
               border: '1px solid #FDE68A',
               borderRadius: '8px',
             }}>
-              <p style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
-                ⚠️ {lang === 'hi' ? 'पूर्ण तैयारी से पहले इन मुद्दों को हल करें:' : 'Issues blocking 100% readiness:'}
+              <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 700, color: '#76500d' }}>
+                {lang === 'hi' ? 'पूर्ण तैयारी से पहले इन मुद्दों को हल करें:' : 'Items to resolve before final review:'}
               </p>
-              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#78350F' }}>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '14px', color: '#654810' }}>
                 {(lang === 'hi' ? evalResult.blockersHi : evalResult.blockers).map((b, idx) => (
                   <li key={idx} style={{ marginBottom: '2px' }}>{b}</li>
                 ))}
@@ -127,7 +127,7 @@ export default function ChecklistPage() {
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--color-success)' }}>
-                🎉 {lang === 'hi' ? 'सभी आवश्यक दस्तावेज़ों के प्रकार की जाँच पूरी! दावा पैकेट की अंतिम समीक्षा के लिए तैयार।' : 'All required documents passed type checks! Ready for final claim packet review.'}
+                {lang === 'hi' ? 'सभी आवश्यक दस्तावेज़ों के प्रकार की जाँच पूरी। दावा पैकेट की अंतिम समीक्षा के लिए तैयार।' : 'All required document type checks are complete. The preparation packet is ready for final review.'}
               </p>
             </div>
           )}

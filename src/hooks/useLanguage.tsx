@@ -22,7 +22,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, toggle }}>
-      {children}
+      <div lang={lang} className={lang === 'hi' ? 'locale-hi' : undefined}>
+        {children}
+      </div>
     </LanguageContext.Provider>
   );
 }

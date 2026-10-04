@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { FileText, TriangleAlert } from 'lucide-react';
 import { useCase } from '@/hooks/useCase';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/lib/i18n';
@@ -73,11 +74,10 @@ export default function SummaryPage() {
       }, 1200);
     } catch (err) {
       console.error('[PDF Download Error]', err);
-      const detail = err instanceof Error ? err.message : String(err);
       setPdfError(
         lang === 'hi'
-          ? `PDF बनाने में त्रुटि: ${detail}`
-          : `PDF generation failed: ${detail}`
+          ? 'PDF अभी तैयार नहीं हो सकी। कृपया फिर से प्रयास करें।'
+          : 'We couldn’t prepare the packet just now. Please try again.'
       );
       setGenerating(false);
     }
@@ -105,14 +105,13 @@ export default function SummaryPage() {
   const requiredItems = caseData.checklist.filter((i) => i.required);
   const verifiedCount = requiredItems.filter((i) => i.evidenceStatus === 'VERIFIED').length;
   const invalidItems = requiredItems.filter((i) => i.evidenceStatus === 'INVALID');
-  const reviewItems = requiredItems.filter((i) => i.evidenceStatus === 'NEEDS_REVIEW');
   const missingItems = requiredItems.filter((i) => i.evidenceStatus === 'MISSING');
   const isReadyToFile = evalResult.status === 'READY';
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <Navbar showBack backHref={`/case/${caseId}/checklist`} />
-      <div className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
+      <div id="main-content" role="main" tabIndex={-1} className="container-app" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '720px' }}>
         <StepIndicator currentStep={4} />
 
         {/* Title */}
@@ -154,16 +153,16 @@ export default function SummaryPage() {
               {isReadyToFile
                 ? (lang === 'hi' ? '✓ अंतिम समीक्षा के लिए तैयार' : '✓ READY FOR FINAL REVIEW')
                 : evalResult.status === 'NEEDS_ATTENTION'
-                ? (lang === 'hi' ? '⚠️ ध्यान देने योग्य मुद्दे' : '⚠️ ACTION REQUIRED BEFORE SUBMISSION')
-                : (lang === 'hi' ? '● साक्ष्य अपूर्ण — अभी तैयार नहीं' : '● INCOMPLETE EVIDENCE — NOT READY')}
+                ? (lang === 'hi' ? 'ध्यान देने योग्य बातें' : 'NEEDS ATTENTION')
+                : (lang === 'hi' ? 'साक्ष्य अधूरा — अभी तैयार नहीं' : 'INCOMPLETE EVIDENCE — NOT READY')}
             </span>
 
             <p style={{ fontSize: '14px', color: 'var(--color-text)', marginTop: '12px', fontWeight: 600 }}>
               {lang === 'hi' ? evalResult.explanationHi : evalResult.explanation}
             </p>
 
-            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '8px', maxWidth: '620px', margin: '8px auto 0', lineHeight: 1.4 }}>
-              ℹ️ {lang === 'hi'
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px', maxWidth: '620px', margin: '8px auto 0', lineHeight: 1.55 }}>
+              {lang === 'hi'
                 ? 'अधिकारसेतु दस्तावेज़ साक्ष्य और तैयारी की तत्परता की जाँच करता है। यह दस्तावेज़ों को प्रमाणित नहीं करता है और न ही अंतिम कानूनी पात्रता निर्धारित करता है।'
                 : 'AdhikarSetu checks document evidence and preparation readiness. It does not authenticate documents or determine final legal eligibility.'}
             </p>
@@ -179,7 +178,7 @@ export default function SummaryPage() {
             border: '1.5px solid #F59E0B',
           }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '20px' }} aria-hidden="true">⚠️</span>
+              <TriangleAlert aria-hidden="true" />
               <div>
                 <h3 style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 800, color: '#92400E' }}>
                   {lang === 'hi' ? 'सक्रिय रुकावटें (दावा जमा करने से पहले ठीक करें):' : 'Active Blockers (Must resolve before submission):'}
@@ -235,7 +234,7 @@ export default function SummaryPage() {
           </div>
 
           <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '14px', lineHeight: 1.4 }}>
-            🛡️ {lang === 'hi'
+            {lang === 'hi'
               ? 'दस्तावेज़ जाँच निकाले गए पाठ और नियतात्मक नियमों पर आधारित हैं। वे दस्तावेज़ों को प्रमाणित नहीं करते हैं और न ही दावे की पात्रता की गारंटी देते हैं।'
               : 'Document checks are based on extracted text and deterministic rules. They do not authenticate documents or guarantee claim eligibility.'}
           </p>
@@ -263,17 +262,17 @@ export default function SummaryPage() {
                       : isRev
                       ? 'rgba(245,158,11,0.08)'
                       : isUC
-                      ? 'rgba(79,70,229,0.05)'
+                      ? '#f2e9e5'
                       : 'var(--color-muted)',
                     gap: '10px',
                     flexWrap: 'wrap',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: '180px' }}>
-                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: 'var(--color-text)' }}>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--color-text)' }}>
                       {lang === 'hi' ? item.labelHi : item.label}
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                       {isVer
                         ? (lang === 'hi' ? 'दस्तावेज़ प्रकार जाँच सफल (पाठ संकेत मिले)' : 'Document type check passed via text signals')
                         : isInv
@@ -287,21 +286,21 @@ export default function SummaryPage() {
                   </div>
 
                   <span style={{
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 800,
                     padding: '3px 8px',
                     borderRadius: '4px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    background: isVer ? 'rgba(22,163,74,0.15)' : isInv ? '#FEE2E2' : isRev ? '#FEF3C7' : isUC ? '#E0E7FF' : 'rgba(0,0,0,0.08)',
-                    color: isVer ? '#15803D' : isInv ? '#B91C1C' : isRev ? '#B45309' : isUC ? '#3730A3' : 'var(--color-text-secondary)',
+                    background: isVer ? 'rgba(22,163,74,0.15)' : isInv ? '#FEE2E2' : isRev ? '#FEF3C7' : isUC ? '#f2e9e5' : 'rgba(0,0,0,0.08)',
+                    color: isVer ? '#15803D' : isInv ? '#B91C1C' : isRev ? '#B45309' : isUC ? '#604b45' : 'var(--color-text-secondary)',
                   }}>
                     {isVer
                       ? (lang === 'hi' ? '✓ दस्तावेज़ प्रकार सही' : '✓ DOCUMENT CHECK PASSED')
                       : isInv
                       ? (lang === 'hi' ? '✗ अस्वीकृत' : '✗ REJECTED')
                       : isRev
-                      ? (lang === 'hi' ? '⚠️ समीक्षा आवश्यक' : '⚠️ NEEDS REVIEW')
+                      ? (lang === 'hi' ? 'समीक्षा आवश्यक' : 'NEEDS REVIEW')
                       : isUC
                       ? (lang === 'hi' ? 'पुष्टीकृत (प्रमाण नहीं)' : 'USER CONFIRMED — NO DOCUMENT PROOF')
                       : (lang === 'hi' ? '● अनुपलब्ध' : '● MISSING')}
@@ -324,7 +323,7 @@ export default function SummaryPage() {
           <h2 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
             {lang === 'hi' ? 'आपकी कार्य योजना (Next Steps)' : 'Action Plan'}
           </h2>
-          <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--color-text)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '15px', color: 'var(--color-text)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {invalidItems.length > 0 && (
               <li>
                 <strong style={{ color: 'var(--color-danger)' }}>
@@ -365,19 +364,19 @@ export default function SummaryPage() {
         </div>
 
         {/* PDF Download CTA */}
-        <div className="card animate-fadeInUp delay-300" style={{ padding: '28px', textAlign: 'center', background: 'linear-gradient(135deg, #0F2D5C, #1C4FA1)', border: 'none' }}>
-          <div style={{ fontSize: '38px', marginBottom: '10px' }} aria-hidden="true">📄</div>
-          <h3 style={{ color: '#fff', fontSize: '20px', marginBottom: '8px' }}>
-            {lang === 'hi' ? 'अधिकारसेतु दावा तैयारी पैकेट' : 'AdhikarSetu Claim Preparation Packet'}
+        <section className="packet-panel animate-fadeInUp delay-300" aria-labelledby="packet-heading">
+          <div className="packet-icon" aria-hidden="true"><FileText /></div>
+          <h3 id="packet-heading" style={{ color: 'var(--color-primary-dark)', fontSize: '22px', marginBottom: '8px' }}>
+            {lang === 'hi' ? 'अधिकारसेतु दावा तैयारी पैकेट' : 'Your Claim Preparation Packet is ready'}
           </h3>
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginBottom: '22px', lineHeight: 1.5, maxWidth: '500px', margin: '0 auto 22px' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '15px', marginBottom: '22px', lineHeight: 1.55, maxWidth: '560px', margin: '0 auto 22px' }}>
             {lang === 'hi'
               ? 'दस्तावेज़ जाँच स्थिति, नाम विसंगति विश्लेषण, कार्य योजना और मसौदा शपथ पत्र सहित संपूर्ण PDF पैकेट।'
               : 'Complete claim preparation packet containing document check audit tables, name mismatch analysis, prioritized action plan, and draft affidavit.'}
           </p>
 
           {pdfError && (
-            <p style={{ color: '#FCA5A5', fontSize: '13px', marginBottom: '12px' }} role="alert">{pdfError}</p>
+            <p style={{ color: 'var(--color-danger)', fontSize: '14px', marginBottom: '12px' }} role="alert">{pdfError}</p>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%', maxWidth: '380px', margin: '0 auto' }}>
@@ -410,22 +409,8 @@ export default function SummaryPage() {
             <button
               onClick={() => downloadPdf(true)}
               disabled={generating}
-              className="btn"
-              style={{
-                width: '100%',
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.3)',
-                padding: '12px 18px',
-                fontSize: '14px',
-                fontWeight: 600,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
+              className="btn btn-outline packet-preview"
+              style={{ width: '100%' }}
               id="preview-pdf-btn"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -436,12 +421,12 @@ export default function SummaryPage() {
             </button>
           </div>
 
-          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '14px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '15px' }}>
             {lang === 'hi'
-              ? 'यह दावा तैयारी रिपोर्ट है — आधिकारिक सरकारी फॉर्म आधिकारिक पोर्टल से ही भरें।'
-              : 'This is a claim preparation report — submit official forms via authorized government/RTA portals.'}
+              ? 'यह तैयारी और दस्तावेज़ समीक्षा रिपोर्ट है, आधिकारिक सरकारी फॉर्म नहीं।'
+              : 'This is a preparation and evidence-audit document. It is not an official government form.'}
           </p>
-        </div>
+        </section>
 
         {/* Navigation */}
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
