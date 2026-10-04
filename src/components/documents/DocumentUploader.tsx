@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { FileText, ScanLine, Sparkles } from 'lucide-react';
 import { DocumentType, UploadedDocument } from '@/lib/types';
 import { extractOcrData } from '@/lib/ocr-extractor';
-import { validateDocument, DocumentValidation } from '@/lib/document-validator';
+import { validateDocument, DocumentValidation, CaseContext } from '@/lib/document-validator';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t, labels } from '@/lib/i18n';
 
@@ -39,12 +39,14 @@ interface DocumentUploaderProps {
   onDocumentAdded: (doc: UploadedDocument) => void;
   targetType?: DocumentType | null;
   onCancelTarget?: () => void;
+  caseContext?: CaseContext;
 }
 
 export default function DocumentUploader({
   onDocumentAdded,
   targetType,
   onCancelTarget,
+  caseContext,
 }: DocumentUploaderProps) {
   const { lang } = useLanguage();
   const [selectedType, setSelectedType] = useState<DocumentType | null>(targetType || null);
@@ -105,8 +107,8 @@ export default function DocumentUploader({
         lang === 'hi' ? 'दस्तावेज़ के प्रकार की जाँच हो रही है…' : 'Checking whether this is the document you need…'
       );
 
-      // Deterministic validation step using actual rules
-      const validation = validateDocument(type, ocrData);
+      // Deterministic validation step using actual rules and case name comparison
+      const validation = validateDocument(type, ocrData, caseContext);
 
       const finalDoc: UploadedDocument = {
         ...baseDoc,
@@ -160,7 +162,7 @@ export default function DocumentUploader({
       setPreviewUrl(null);
       if (onCancelTarget) onCancelTarget();
     }
-  }, [onDocumentAdded, lang, onCancelTarget]);
+  }, [onDocumentAdded, lang, onCancelTarget, caseContext]);
 
   const handleFile = useCallback((file: File) => {
     if (!selectedType) return;

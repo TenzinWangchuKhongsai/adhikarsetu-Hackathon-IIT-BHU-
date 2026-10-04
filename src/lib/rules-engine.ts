@@ -503,7 +503,10 @@ export function nameSimilarity(name1: string, name2: string): number {
   return Math.max(0, 1 - dist / maxLen);
 }
 
-export function detectNameMismatches(documents: UploadedDocument[]): NameMismatch[] {
+export function detectNameMismatches(
+  documents: UploadedDocument[],
+  caseContext?: { claimantName?: string; deceasedName?: string }
+): NameMismatch[] {
   // Only check documents that were actually recognized / not completely invalid
   const docsWithNames = documents.filter(
     (d) => d.ocrData?.name && d.ocrStatus === 'DONE' && d.validation?.status !== 'INVALID'
@@ -525,6 +528,39 @@ export function detectNameMismatches(documents: UploadedDocument[]): NameMismatc
           doc2Name: d2.ocrData!.name!,
           similarity: Math.round(sim * 100) / 100,
         });
+      }
+    }
+  }
+
+  // Cross-check against registered case names
+  if (caseContext) {
+    for (const doc of docsWithNames) {
+      let expectedName: string | undefined;
+      let roleLabel = 'Case Details';
+      if (doc.type === 'DEATH_CERTIFICATE' || doc.type === 'SHARE_CERTIFICATE') {
+        expectedName = caseContext.deceasedName;
+        roleLabel = 'Deceased Shareholder';
+      } else if (
+        doc.type === 'PAN_CARD' ||
+        doc.type === 'AADHAAR' ||
+        doc.type === 'CANCELLED_CHEQUE' ||
+        doc.type === 'BANK_PASSBOOK'
+      ) {
+        expectedName = caseContext.claimantName;
+        roleLabel = 'Claimant';
+      }
+
+      if (expectedName && doc.ocrData?.name) {
+        const sim = nameSimilarity(expectedName, doc.ocrData.name);
+        if (sim < 0.65) {
+          mismatches.push({
+            doc1Type: doc.type,
+            doc1Name: doc.ocrData.name,
+            doc2Type: doc.type,
+            doc2Name: `${expectedName} (Registered ${roleLabel})`,
+            similarity: Math.round(sim * 100) / 100,
+          });
+        }
       }
     }
   }
@@ -602,7 +638,10 @@ export function syncChecklistWithDocuments(caseData: Case): Case {
     };
   });
 
-  const nameMismatches = detectNameMismatches(caseData.documents);
+  const nameMismatches = detectNameMismatches(caseData.documents, {
+    claimantName: caseData.claimantName,
+    deceasedName: caseData.deceasedName,
+  });
   const evaluation = evaluateCaseReadiness(updatedChecklist, caseData.documents, nameMismatches);
 
   return {

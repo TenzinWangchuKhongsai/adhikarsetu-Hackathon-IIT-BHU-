@@ -216,6 +216,10 @@ export default function DocumentsPage() {
             onDocumentAdded={handleDocumentAdded}
             targetType={targetReplaceType}
             onCancelTarget={() => setTargetReplaceType(null)}
+            caseContext={{
+              claimantName: caseData.claimantName,
+              deceasedName: caseData.deceasedName,
+            }}
           />
         </div>
 

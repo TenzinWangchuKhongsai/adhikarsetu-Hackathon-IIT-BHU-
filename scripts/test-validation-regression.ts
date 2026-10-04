@@ -170,6 +170,52 @@ console.log('  Status:', resVariants.status, '| Valid:', resVariants.isValid);
 console.log('  Matched signals:', resVariants.matchedSignals);
 assert(resVariants.status === 'VALID', 'Spaceless / OCR merged variants must be recognized as VALID');
 
+// 9. Name in document matches given case information -> ACCEPT
+const resNameMatch = validateDocument(
+  'DEATH_CERTIFICATE',
+  { rawText: sampleMcdDeathCertText, name: 'SHIV KUMAR' },
+  { deceasedName: 'Shiv Kumar' }
+);
+console.log('\n[Test 9] Name in document matches given case info (SAME -> ACCEPT):');
+console.log('  Status:', resNameMatch.status, '| Valid:', resNameMatch.isValid);
+console.log('  Matched signals:', resNameMatch.matchedSignals.slice(0, 3));
+assert(resNameMatch.status === 'VALID', 'Document with matching case name must be ACCEPTED (VALID)');
+assert(resNameMatch.isValid === true, 'Matching name must be valid');
+
+// 10. Name in document differs from given case information -> REJECT
+const resNameMismatch = validateDocument(
+  'DEATH_CERTIFICATE',
+  { rawText: sampleMcdDeathCertText, name: 'SHIV KUMAR' },
+  { deceasedName: 'Late Suresh Sharma' }
+);
+console.log('\n[Test 10] Name in document differs from given case info (NOT SAME -> REJECT):');
+console.log('  Status:', resNameMismatch.status, '| Valid:', resNameMismatch.isValid);
+console.log('  Reason:', resNameMismatch.reason);
+console.log('  Contradictory signals:', resNameMismatch.contradictorySignals);
+assert(resNameMismatch.status === 'INVALID', 'Document with mismatching case name must be REJECTED (INVALID)');
+assert(resNameMismatch.isValid === false, 'Mismatching name must not be valid');
+
+// 11. PAN Card matching claimant name -> ACCEPT
+const resPanMatch = validateDocument(
+  'PAN_CARD',
+  { rawText: panCardText, name: 'RAJESH GUPTA', pan: 'ABCDE1234F' },
+  { claimantName: 'Rajesh Gupta' }
+);
+console.log('\n[Test 11] PAN card name matches claimant (SAME -> ACCEPT):');
+console.log('  Status:', resPanMatch.status, '| Valid:', resPanMatch.isValid);
+assert(resPanMatch.status === 'VALID', 'PAN card matching claimant must be ACCEPTED (VALID)');
+
+// 12. PAN Card differing from claimant name -> REJECT
+const resPanMismatch = validateDocument(
+  'PAN_CARD',
+  { rawText: panCardText, name: 'RAJESH GUPTA', pan: 'ABCDE1234F' },
+  { claimantName: 'Amit Verma' }
+);
+console.log('\n[Test 12] PAN card name differs from claimant (NOT SAME -> REJECT):');
+console.log('  Status:', resPanMismatch.status, '| Valid:', resPanMismatch.isValid);
+console.log('  Reason:', resPanMismatch.reason);
+assert(resPanMismatch.status === 'INVALID', 'PAN card differing from claimant must be REJECTED (INVALID)');
+
 console.log('\n==================================================');
 console.log('🎉 ALL DOCUMENT VALIDATION REGRESSION TESTS PASSED!');
 console.log('==================================================\n');

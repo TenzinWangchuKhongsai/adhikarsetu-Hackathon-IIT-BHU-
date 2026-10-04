@@ -594,6 +594,59 @@ function isSignalMatched(
   return signal.term.test(normText) || signal.term.test(rawText);
 }
 
+export interface CaseContext {
+  claimantName?: string;
+  deceasedName?: string;
+}
+
+export function cleanNameForComparison(name: string): string {
+  return (name || '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/\b(late|shri|shree|sh\.|smt\.|smt|mr\.|mr|mrs\.|mrs|ms\.|ms|dr\.|dr)\b/gi, '')
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function compareNames(
+  givenName?: string,
+  docName?: string
+): { isMatch: boolean; similarity: number } {
+  const a = cleanNameForComparison(givenName || '');
+  const b = cleanNameForComparison(docName || '');
+
+  if (!a || !b) return { isMatch: true, similarity: 1 };
+  if (a === b) return { isMatch: true, similarity: 1 };
+
+  const tokensA = a.split(' ').filter(Boolean);
+  const tokensB = b.split(' ').filter(Boolean);
+
+  const common = tokensA.filter((t) => tokensB.includes(t));
+  const minTokens = Math.min(tokensA.length, tokensB.length);
+  if (common.length >= minTokens && minTokens > 0) {
+    return { isMatch: true, similarity: 0.95 };
+  }
+
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return { isMatch: true, similarity: 1 };
+
+  const matrix: number[][] = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      matrix[i][j] =
+        b[i - 1] === a[j - 1]
+          ? matrix[i - 1][j - 1]
+          : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+    }
+  }
+  const dist = matrix[b.length][a.length];
+  const sim = Math.max(0, 1 - dist / maxLen);
+
+  return { isMatch: sim >= 0.65, similarity: Math.round(sim * 100) / 100 };
+}
+
 /**
  * Deterministically validates an uploaded document using OCR extracted text and fields.
  * NEVER relies on LLMs.
@@ -601,7 +654,8 @@ function isSignalMatched(
  */
 export function validateDocument(
   docType: DocumentType,
-  ocrData: OcrData | undefined | null
+  ocrData: OcrData | undefined | null,
+  caseContext?: CaseContext
 ): DocumentValidation {
   const config = VALIDATION_CONFIGS[docType];
   if (!config) {
@@ -711,6 +765,64 @@ export function validateDocument(
       suggestedAction: `Please upload the actual ${config.titleEn} instead.`,
       suggestedActionHi: `कृपया वास्तविक ${config.titleHi} अपलोड करें।`,
     };
+  }
+
+  // 6b. Check extracted name against given case information (if provided)
+  const extractedName = ocrData?.name?.trim();
+  if (caseContext && extractedName) {
+    let expectedName: string | undefined;
+    let roleLabel = 'case information';
+    let roleLabelHi = 'मामले के विवरण';
+
+    if (docType === 'DEATH_CERTIFICATE' || docType === 'SHARE_CERTIFICATE') {
+      expectedName = caseContext.deceasedName;
+      roleLabel = 'deceased shareholder';
+      roleLabelHi = 'मृतक शेयरधारक';
+    } else if (
+      docType === 'PAN_CARD' ||
+      docType === 'AADHAAR' ||
+      docType === 'CANCELLED_CHEQUE' ||
+      docType === 'BANK_PASSBOOK'
+    ) {
+      expectedName = caseContext.claimantName;
+      roleLabel = 'claimant';
+      roleLabelHi = 'दावेदार';
+    } else {
+      // Joint / succession documents (affidavit, legal heir, etc.)
+      const matchClaimant = compareNames(caseContext.claimantName, extractedName);
+      const matchDeceased = compareNames(caseContext.deceasedName, extractedName);
+      if (caseContext.claimantName && caseContext.deceasedName) {
+        if (!matchClaimant.isMatch && !matchDeceased.isMatch) {
+          expectedName = `${caseContext.claimantName} or ${caseContext.deceasedName}`;
+        }
+      }
+    }
+
+    if (expectedName) {
+      const comparison = compareNames(expectedName, extractedName);
+      if (!comparison.isMatch) {
+        // Name does NOT match: REJECT the document
+        return {
+          status: 'INVALID',
+          isValid: false,
+          confidence: 'LOW',
+          confidenceScore: 0,
+          matchedSignals: matchedSignals.filter((s) => !s.toLowerCase().includes('name')),
+          missingSignals: [`Name matching ${roleLabel}: "${expectedName}"`],
+          contradictorySignals: [
+            ...contradictorySignals,
+            `Name Mismatch: Document has "${extractedName}", case requires "${expectedName}"`,
+          ],
+          reason: `Name mismatch: The name extracted from this document ("${extractedName}") does not match the ${roleLabel} name entered in the case ("${expectedName}").`,
+          reasonHi: `नाम में अंतर: इस दस्तावेज़ से निकाला गया नाम ("${extractedName}") मामले में दर्ज ${roleLabelHi} के नाम ("${expectedName}") से मेल नहीं खाता।`,
+          suggestedAction: `Please upload a document belonging to ${expectedName}, or update the case details if the name was entered incorrectly.`,
+          suggestedActionHi: `कृपया ${expectedName} का सही दस्तावेज़ अपलोड करें, या यदि नाम गलत दर्ज था तो मामले का विवरण अपडेट करें।`,
+        };
+      } else {
+        // Name matches: add a prominent positive signal
+        matchedSignals.unshift(`Name matches ${roleLabel} (${extractedName})`);
+      }
+    }
   }
 
   // 7. Valid: sufficient score AND at least 2 independent strong signals
