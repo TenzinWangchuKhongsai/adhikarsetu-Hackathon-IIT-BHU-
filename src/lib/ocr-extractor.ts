@@ -123,18 +123,35 @@ function extractFolio(text: string): string | undefined {
 }
 
 function extractName(text: string): string | undefined {
-  // Try labeled fields first, limiting match to single line
-  const patterns = [
-    /(?:Name\s*(?:of\s*(?:the\s*)?(?:shareholder|applicant|account\s*holder|deceased))?|Name)\s*[:\-]?\s*([A-Za-z][A-Za-z\s.]{2,40})/i,
-    /(?:Sh\.|Shri\s+|Smt\.\s+|Mr\.\s+|Mrs\.\s+|Ms\.\s+)([A-Za-z][A-Za-z\s.]{2,40})/i,
-  ];
-  for (const pat of patterns) {
-    const m = text.match(pat);
-    if (m) {
-      const line = m[1].split(/[\r\n]/)[0].trim().replace(/\s+/g, ' ');
-      if (line.length > 3 && line.length < 60) return line;
+  // 1. Explicit deceased / shareholder / applicant / demised name
+  const deceasedMatch = text.match(
+    /(?:Name\s*of\s*(?:the\s*)?(?:deceased|deceasad|shareholder|applicant|holder|demised)|deceased\s*name)\s*[^:\n\r]{0,30}[:\-]\s*([A-Za-z][A-Za-z\s.]{2,40})/i
+  );
+  if (deceasedMatch) {
+    const name = deceasedMatch[1].split(/[\r\n]/)[0].trim().replace(/\s+/g, ' ');
+    if (name.length > 2 && !/^(father|mother|husband|spouse|doctor|registrar|hospital|place)/i.test(name)) {
+      return name;
     }
   }
+
+  // 2. Generic Name: field (excluding Father/Mother/Husband/Registrar)
+  const lines = text.split(/[\r\n]+/);
+  for (const line of lines) {
+    if (/(?:father|mother|husband|spouse|registrar|doctor|hospital)/i.test(line)) continue;
+    const m = line.match(/(?:Name(?:\s+of\s+[^:\-]+)?|नाम)\s*[:\-]\s*([A-Za-z][A-Za-z\s.]{2,40})/i);
+    if (m) {
+      const name = m[1].trim().replace(/\s+/g, ' ');
+      if (name.length > 2 && !/^(of\s|the\s)/i.test(name)) return name;
+    }
+  }
+
+  // 3. Honorific prefix
+  const honMatch = text.match(/(?:Sh\.|Shri\s+|Smt\.\s+|Mr\.\s+|Mrs\.\s+|Ms\.\s+|Late\s+)([A-Za-z][A-Za-z\s.]{2,40})/i);
+  if (honMatch) {
+    const name = honMatch[1].split(/[\r\n]/)[0].trim().replace(/\s+/g, ' ');
+    if (name.length > 2 && !/^(father|mother|husband|spouse)/i.test(name)) return name;
+  }
+
   return undefined;
 }
 
